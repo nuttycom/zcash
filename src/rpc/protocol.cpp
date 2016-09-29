@@ -26,7 +26,7 @@ using namespace std;
  * 1.2 spec: https://www.jsonrpc.org/historical/jsonrpc12_proposal.html
  */
 
-string JSONRPCRequest(const string& strMethod, const UniValue& params, const UniValue& id)
+UniValue JSONRPCRequestObj(const string& strMethod, const UniValue& params, const UniValue& id)
 {
     UniValue request(UniValue::VOBJ);
     request.pushKV("method", strMethod);
