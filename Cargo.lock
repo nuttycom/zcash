@@ -67,7 +67,7 @@ checksum = "b671c8fb71b457dd4ae18c4ba1e59aa81793daacc361d82fcd410cef0d491875"
 [[package]]
 name = "bellman"
 version = "0.6.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "bit-vec",
  "blake2s_simd",
@@ -300,7 +300,7 @@ checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 [[package]]
 name = "ff"
 version = "0.6.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "byteorder",
  "ff_derive",
@@ -311,7 +311,7 @@ dependencies = [
 [[package]]
 name = "ff_derive"
 version = "0.6.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "addchain",
  "num-bigint",
@@ -374,7 +374,7 @@ dependencies = [
 [[package]]
 name = "group"
 version = "0.6.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "ff",
  "rand",
@@ -488,7 +488,7 @@ checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 [[package]]
 name = "pairing"
 version = "0.16.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "byteorder",
  "ff",
@@ -671,9 +671,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
+name = "zcash_extensions_api"
+version = "0.0.0"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
+
+[[package]]
 name = "zcash_history"
 version = "0.2.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "bigint",
  "blake2b_simd",
@@ -683,7 +688,7 @@ dependencies = [
 [[package]]
 name = "zcash_primitives"
 version = "0.2.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "aes",
  "blake2b_simd",
@@ -700,12 +705,13 @@ dependencies = [
  "rand_core",
  "sha2",
  "subtle",
+ "zcash_extensions_api",
 ]
 
 [[package]]
 name = "zcash_proofs"
 version = "0.2.0"
-source = "git+https://github.com/zcash/librustzcash?rev=97c21e0c1a#97c21e0c1ae5ec41a60234e80bccd95d8844fd13"
+source = "git+https://github.com/str4d/librustzcash?branch=zip-tzes#dbe713a9ef4a974d9aa96e899ea241e6547c7952"
 dependencies = [
  "bellman",
  "blake2b_simd",

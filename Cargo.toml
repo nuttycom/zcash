@@ -38,10 +38,10 @@ panic = 'abort'
 codegen-units = 1
 
 [patch.crates-io]
-bellman = {git = "https://github.com/zcash/librustzcash", rev = "97c21e0c1a"}
-ff = {git = "https://github.com/zcash/librustzcash", rev = "97c21e0c1a"}
-pairing = {git = "https://github.com/zcash/librustzcash", rev = "97c21e0c1a"}
-zcash_history = {git = "https://github.com/zcash/librustzcash", rev = "97c21e0c1a"}
-zcash_primitives = {git = "https://github.com/zcash/librustzcash", rev = "97c21e0c1a"}
-zcash_proofs = {git = "https://github.com/zcash/librustzcash", rev = "97c21e0c1a"}
+bellman = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
+ff = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
+pairing = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
+zcash_history = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
+zcash_primitives = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
+zcash_proofs = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
 
