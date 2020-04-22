@@ -5,6 +5,7 @@
 
 #include "txdb.h"
 
+#include "compressor.h"
 #include "chainparams.h"
 #include "hash.h"
 #include "main.h"
@@ -24,6 +25,7 @@ static const char DB_SAPLING_ANCHOR = 'Z';
 static const char DB_NULLIFIER = 's';
 static const char DB_SAPLING_NULLIFIER = 'S';
 static const char DB_COINS = 'c';
+static const char DB_TZE_COINS = 'C';
 static const char DB_BLOCK_FILES = 'f';
 static const char DB_TXINDEX = 't';
 static const char DB_BLOCK_INDEX = 'b';
@@ -95,7 +97,11 @@ bool CCoinsViewDB::GetNullifier(const uint256 &nf, ShieldedType type) const {
 }
 
 bool CCoinsViewDB::GetCoins(const uint256 &txid, CCoins &coins) const {
-    return db.Read(make_pair(DB_COINS, txid), coins);
+    bool coinsRead = db.Read(make_pair(DB_COINS, txid), coins);
+
+    CTzeCoinsSer tcs(coins);
+    bool tzeRead = db.Read(make_pair(DB_TZE_COINS, txid), tcs);
+    return coinsRead && tzeRead;
 }
 
 bool CCoinsViewDB::HaveCoins(const uint256 &txid) const {
@@ -232,10 +238,13 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins,
     size_t changed = 0;
     for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
         if (it->second.flags & CCoinsCacheEntry::DIRTY) {
-            if (it->second.coins.IsPruned())
+            if (it->second.coins.IsPruned()) {
                 batch.Erase(make_pair(DB_COINS, it->first));
-            else
+                batch.Erase(make_pair(DB_TZE_COINS, it->first));
+            } else {
                 batch.Write(make_pair(DB_COINS, it->first), it->second.coins);
+                batch.Write(make_pair(DB_TZE_COINS, it->first), CTzeCoinsSer(it->second.coins));
+            }
             changed++;
         }
         count++;

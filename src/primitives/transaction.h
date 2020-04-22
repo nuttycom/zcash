@@ -15,6 +15,7 @@
 #include "consensus/consensus.h"
 
 #include <array>
+#include <cstdint>
 
 #include <boost/variant.hpp>
 
@@ -491,6 +492,127 @@ public:
     std::string ToString() const;
 };
 
+typedef uint32_t TzeType;
+typedef uint32_t TzeMode;
+typedef std::vector<uint8_t> TzePayload;
+
+class CTzeCall
+{
+public:
+    TzeType wtype;
+    TzeMode wmode;
+    TzePayload payload;
+
+    CTzeCall() {
+    }
+
+    CTzeCall(TzeType wtype, TzeMode wmode, TzePayload payload) {
+        wtype = wtype;
+        wmode = wmode;
+        payload = payload;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(wtype);
+        READWRITE(wmode);
+        READWRITE(payload);
+    }
+
+    friend bool operator==(const CTzeCall& a, const CTzeCall& b)
+    {
+        return (a.wtype == b.wtype &&
+                a.wmode == b.wmode &&
+                a.payload == b.payload);
+    }
+};
+
+class CTzeIn
+{
+public:
+    COutPoint prevout;
+    CTzeCall witness;
+
+    CTzeIn() {
+    }
+
+    CTzeIn(COutPoint prevoutIn, CTzeCall witness) {
+        prevout = prevoutIn;
+        witness = witness;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(prevout);
+        READWRITE(witness);
+    }
+
+    friend bool operator==(const CTzeIn& a, const CTzeIn& b)
+    {
+        return (a.prevout == b.prevout &&
+                a.witness == b.witness);
+    }
+
+    friend bool operator!=(const CTzeIn& a, const CTzeIn& b)
+    {
+        return !(a == b);
+    }
+
+    std::string ToString() const;
+};
+
+class CTzeOut
+{
+public:
+    CAmount nValue;
+    CTzeCall predicate;
+
+    CTzeOut() {
+        SetNull();
+    }
+
+    CTzeOut(const CAmount& nValueIn, CTzeCall predicateIn) {
+        nValue = nValueIn;
+        predicate = predicateIn;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nValue);
+        READWRITE(predicate);
+    }
+
+    void SetNull()
+    {
+        nValue = -1;
+    }
+
+    bool IsNull() const
+    {
+        return (nValue == -1);
+    }
+
+    uint256 GetHash() const;
+
+    friend bool operator==(const CTzeOut& a, const CTzeOut& b)
+    {
+        return (a.IsNull() && b.IsNull()) || (a.nValue == b.nValue && a.predicate == b.predicate);
+    }
+
+    friend bool operator!=(const CTzeOut& a, const CTzeOut& b)
+    {
+        return !(a == b);
+    }
+
+    std::string ToString() const;
+};
+
 // Overwinter version group id
 static constexpr uint32_t OVERWINTER_VERSION_GROUP_ID = 0x03C48270;
 static_assert(OVERWINTER_VERSION_GROUP_ID != 0, "version group id must be non-zero as specified in ZIP 202");
@@ -556,6 +678,8 @@ public:
     const uint32_t nVersionGroupId;
     const std::vector<CTxIn> vin;
     const std::vector<CTxOut> vout;
+    const std::vector<CTzeIn> tzein;
+    const std::vector<CTzeOut> tzeout;
     const uint32_t nLockTime;
     const uint32_t nExpiryHeight;
     const CAmount valueBalance;
@@ -607,6 +731,8 @@ public:
 
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
         READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
+        READWRITE(*const_cast<std::vector<CTzeIn>*>(&tzein));
+        READWRITE(*const_cast<std::vector<CTzeOut>*>(&tzeout));
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
         if (isOverwinterV3 || isSaplingV4) {
             READWRITE(*const_cast<uint32_t*>(&nExpiryHeight));

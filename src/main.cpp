@@ -2148,7 +2148,7 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 bool ContextualCheckInputs(
     const CTransaction& tx,
     CValidationState &state,
-    const CCoinsViewCache &inputs,
+    const CCoinsViewCache &inputs, //chain view state as of a particular height (CChainStateView)
     bool fScriptChecks,
     unsigned int flags,
     bool cacheStore,
@@ -2219,6 +2219,21 @@ bool ContextualCheckInputs(
                     return state.DoS(100,false, REJECT_INVALID, strprintf("mandatory-script-verify-flag-failed (%s)", ScriptErrorString(check.GetScriptError())));
                 }
             }
+
+            for (unsigned int i = 0; i < tx.tzein.size(); i++) {
+                const COutPoint &prevout = tx.tzein[i].prevout;
+                const CCoins* sources = inputs.AccessCoins(prevout.hash);
+                assert(sources);
+
+                // Find the specific precondition purportedly satisfied by this witness.
+                // About the only thing that we can check here is that the tze type and the
+                // modes match?
+
+                // construct the context -- do we have to serialize the whole transaction?
+
+                // call through to the rust API's verify function
+            }
+
         }
     }
 

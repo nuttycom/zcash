@@ -55,6 +55,7 @@ use zcash_primitives::{
     primitives::{Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey},
     redjubjub::{self, Signature},
     sapling::{merkle_hash, spend_sig},
+    transaction::Transaction,
     transaction::components::Amount,
     zip32, JUBJUB,
 };

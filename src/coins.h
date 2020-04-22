@@ -81,6 +81,9 @@ public:
     //! unspent transaction outputs; spent outputs are .IsNull(); spent outputs at the end of the array are dropped
     std::vector<CTxOut> vout;
 
+    //! unconsumed transparent extension outputs 
+    std::vector<CTzeOut> tzeout;
+
     //! at which height this transaction was included in the active block chain
     int nHeight;
 
@@ -91,9 +94,12 @@ public:
     void FromTx(const CTransaction &tx, int nHeightIn) {
         fCoinBase = tx.IsCoinBase();
         vout = tx.vout;
+        tzeout = tx.tzeout;
         nHeight = nHeightIn;
         nVersion = tx.nVersion;
         ClearUnspendable();
+        // We don't have a spendability analog for TZE outputs, since we can't
+        // inspect them without calling in to TZE code.
     }
 
     //! construct a CCoins from a CTransaction, at a given height
@@ -104,12 +110,13 @@ public:
     void Clear() {
         fCoinBase = false;
         std::vector<CTxOut>().swap(vout);
+        std::vector<CTzeOut>().swap(tzeout);
         nHeight = 0;
         nVersion = 0;
     }
 
     //! empty constructor
-    CCoins() : fCoinBase(false), vout(0), nHeight(0), nVersion(0) { }
+    CCoins() : fCoinBase(false), vout(0), tzeout(0), nHeight(0), nVersion(0) { }
 
     //!remove spent outputs at the end of vout
     void Cleanup() {
@@ -622,4 +629,21 @@ private:
     HistoryCache& SelectHistoryCache(uint32_t epochId) const;
 };
 
+class CTzeCoinsSer 
+{
+public:
+    CCoins& coins;
+
+    CTzeCoinsSer(CCoins& coinsIn): coins(coinsIn) { } 
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        for (unsigned int i = 0; i < coins.tzeout.size(); i++) {
+            if (!coins.tzeout[i].IsNull())
+                ::Serialize(s, CTzeOutSer(REF(coins.tzeout[i])));
+        }
+    }
+};
 #endif // BITCOIN_COINS_H
