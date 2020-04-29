@@ -4858,7 +4858,8 @@ int CMerkleTx::GetBlocksToMaturity() const
 bool CMerkleTx::AcceptToMemoryPool(bool fLimitFree, bool fRejectAbsurdFee)
 {
     CValidationState state;
-    return ::AcceptToMemoryPool(mempool, state, *this, fLimitFree, NULL, fRejectAbsurdFee);
+    const TZE& tze = Params().GetTzeCapability(); //FIXME: Refactor this global Params() access.
+    return ::AcceptToMemoryPool(mempool, state, tze, *this, fLimitFree, NULL, fRejectAbsurdFee);
 }
 
 /**

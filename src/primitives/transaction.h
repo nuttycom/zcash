@@ -499,16 +499,16 @@ typedef std::vector<uint8_t> TzePayload;
 class CTzeCall
 {
 public:
-    TzeType wtype;
-    TzeMode wmode;
+    TzeType extensionId;
+    TzeMode mode;
     TzePayload payload;
 
     CTzeCall() {
     }
 
-    CTzeCall(TzeType wtype, TzeMode wmode, TzePayload payload) {
-        wtype = wtype;
-        wmode = wmode;
+    CTzeCall(TzeType extensionId, TzeMode mode, TzePayload payload) {
+        extensionId = extensionId;
+        mode = mode;
         payload = payload;
     }
 
@@ -516,15 +516,15 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(wtype);
-        READWRITE(wmode);
+        READWRITE(extensionId);
+        READWRITE(mode);
         READWRITE(payload);
     }
 
     friend bool operator==(const CTzeCall& a, const CTzeCall& b)
     {
-        return (a.wtype == b.wtype &&
-                a.wmode == b.wmode &&
+        return (a.extensionId == b.extensionId &&
+                a.mode == b.mode &&
                 a.payload == b.payload);
     }
 
@@ -533,8 +533,8 @@ public:
     }
 
     bool corresponds(const CTzeCall& other) const {
-        return (wtype == other.wtype && 
-                wmode == other.wmode &&
+        return (extensionId == other.extensionId && 
+                mode == other.mode &&
                 payload != other.payload);
     }
 

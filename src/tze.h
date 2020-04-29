@@ -11,13 +11,11 @@
 
 class TzeContext 
 {
-private:
-    int height;
+public:
+    const int height;
     const CTransaction& tx;
 
-public:
-    TzeContext(int heightIn, const CTransaction& txIn): tx(txIn) {
-        height = heightIn;
+    TzeContext(int heightIn, const CTransaction& txIn): height(heightIn), tx(txIn) {
     }
 
     ADD_SERIALIZE_METHODS;

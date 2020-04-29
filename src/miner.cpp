@@ -419,7 +419,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
             // create only contains transactions that are valid in new blocks.
             CValidationState state;
             PrecomputedTransactionData txdata(tx);
-            if (!ContextualCheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, chainparams.GetConsensus(), consensusBranchId))
+            if (!ContextualCheckInputs(chainparams.GetTzeCapability(), tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, chainparams.GetConsensus(), consensusBranchId))
                 continue;
 
             if (chainparams.ZIP209Enabled() && monitoring_pool_balances) {

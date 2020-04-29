@@ -8,7 +8,7 @@
 /**
  * Singleton implementation of librustzcash-backed TZE
  */
-class LibrustzcashTZE : TZE {
+class LibrustzcashTZE : public TZE {
 public:
     static LibrustzcashTZE& getInstance()
     {
@@ -17,7 +17,17 @@ public:
     }
 
     bool check(const CTzeCall& predicate, const CTzeCall& witness, const TzeContext& ctx) const {
-        return false;
+        std::vector<uint8_t> txser;
+        // TODO: serialize ctx.tx into txser
+        return librustzcash_tze_verify(
+                predicate.extensionId,
+                predicate.mode,
+                &predicate.payload[0],
+                witness.extensionId,
+                witness.mode,
+                &witness.payload[0],
+                ctx.height,
+                &txser[0]);
     }
 
     // disable copy-constructor and assignment

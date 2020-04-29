@@ -7,6 +7,8 @@
 #include "main.h"
 #include "crypto/equihash.h"
 
+#include "tze.h"
+#include "tze.cpp"
 #include "tinyformat.h"
 #include "util.h"
 #include "utilstrencodings.h"
@@ -272,6 +274,7 @@ public:
 //            "t3fP6GrDM4QVwdjFhmCxGNbe7jXXXSDQ5dv", /* main-index: 54*/
 };
         assert(vFoundersRewardAddress.size() <= consensus.GetLastFoundersRewardBlockHeight(0));
+
     }
 };
 static CMainParams mainParams;
@@ -637,6 +640,10 @@ CScript CChainParams::GetFoundersRewardScriptAtHeight(int nHeight) const {
 std::string CChainParams::GetFoundersRewardAddressAtIndex(int i) const {
     assert(i >= 0 && i < vFoundersRewardAddress.size());
     return vFoundersRewardAddress[i];
+}
+
+const TZE& CChainParams::GetTzeCapability() const {
+    return LibrustzcashTZE::getInstance();
 }
 
 void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, int nActivationHeight)

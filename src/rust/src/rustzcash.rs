@@ -1353,5 +1353,30 @@ pub extern "C" fn librustzcash_tze_verify(
     height: i32,
     tx_serialized: &[u8]
 ) -> bool {
-    return false;
+   match tze_verify_internal(
+       p_extension_id,
+       p_mode,
+       p_payload,
+       w_extension_id,
+       w_mode,
+       w_payload,
+       height,
+       tx_serialized) {
+       Ok(b) => b,
+       _ => false,
+   }
+}
+
+fn tze_verify_internal(
+    _p_extension_id: u32,
+    _p_mode: u32,
+    _p_payload: &[u8],
+    _w_extension_id: u32,
+    _w_mode: u32,
+    _w_payload: &[u8],
+    _height: i32,
+    tx_serialized: &[u8]) -> Result<bool, std::io::Error> {
+    let _txn = Transaction::read(tx_serialized)?;
+
+    Ok(true)
 }

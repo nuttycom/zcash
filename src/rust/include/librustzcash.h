@@ -358,7 +358,7 @@ extern "C" {
         const unsigned char* p_payload,
         uint32_t w_extension_id,
         uint32_t w_mode,
-        unsigned char* w_payload,
+        const unsigned char* w_payload,
         int32_t height,
         const unsigned char* tx
         // TODO: some return channel for errors?
