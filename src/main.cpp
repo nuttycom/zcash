@@ -25,6 +25,7 @@
 #include "net.h"
 #include "policy/policy.h"
 #include "pow.h"
+#include "tze.h"
 #include "txmempool.h"
 #include "ui_interface.h"
 #include "undo.h"
@@ -2155,7 +2156,8 @@ bool ContextualCheckInputs(
     PrecomputedTransactionData& txdata,
     const Consensus::Params& consensusParams,
     uint32_t consensusBranchId,
-    std::vector<CScriptCheck> *pvChecks)
+    std::vector<CScriptCheck> *pvChecks,
+    const TZE& tze)
 {
     if (!tx.IsCoinBase())
     {
@@ -2220,18 +2222,31 @@ bool ContextualCheckInputs(
                 }
             }
 
+            // for each TZE input, look up the associated prior TZE output, and pass both
+            // to the extension checker.
             for (unsigned int i = 0; i < tx.tzein.size(); i++) {
-                const COutPoint &prevout = tx.tzein[i].prevout;
-                const CCoins* sources = inputs.AccessCoins(prevout.hash);
-                assert(sources);
+                const COutPoint& prevout = tx.tzein[i].prevout;
+                const CCoins* coins = inputs.AccessCoins(prevout.hash);
+                assert(coins && coins->tzeout.size() > prevout.n);
 
-                // Find the specific precondition purportedly satisfied by this witness.
-                // About the only thing that we can check here is that the tze type and the
-                // modes match?
+                // Check that the witness has the same tze type and mode as the
+                // predicate. This might be duplicative of a check within the
+                // TZE code itself?
+                const CTzeCall& witness = tx.tzein[i].witness;
+                const CTzeCall& predicate = coins->tzeout[prevout.n].predicate;
+                if (witness.corresponds(predicate)) {
+                    // construct the context 
+                    // FIXME: where to get the height?
+                    TzeContext ctx(0, tx);
 
-                // construct the context -- do we have to serialize the whole transaction?
-
-                // call through to the rust API's verify function
+                    // call through to the rust API's verify function
+                    if (!tze.check(witness, predicate, ctx)) {
+                        return state.Invalid(false, REJECT_INVALID, "tze check failed");
+                    }
+                } else {
+                    // FIXME: Placeholder, what should the actual rejection be? 
+                    return state.Invalid(false, REJECT_INVALID, "tze id or mode mismatch");
+                }
             }
 
         }

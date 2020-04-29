@@ -629,6 +629,10 @@ private:
     HistoryCache& SelectHistoryCache(uint32_t epochId) const;
 };
 
+/**
+ * A small wrapper for CCoins for serialization purposes that exclusively
+ * serializes the tzeout entries. For use in txdb.
+ */
 class CTzeCoinsSer 
 {
 public:

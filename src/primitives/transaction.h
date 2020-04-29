@@ -527,42 +527,17 @@ public:
                 a.wmode == b.wmode &&
                 a.payload == b.payload);
     }
-};
 
-class CTzeIn
-{
-public:
-    COutPoint prevout;
-    CTzeCall witness;
-
-    CTzeIn() {
-    }
-
-    CTzeIn(COutPoint prevoutIn, CTzeCall witness) {
-        prevout = prevoutIn;
-        witness = witness;
-    }
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(prevout);
-        READWRITE(witness);
-    }
-
-    friend bool operator==(const CTzeIn& a, const CTzeIn& b)
-    {
-        return (a.prevout == b.prevout &&
-                a.witness == b.witness);
-    }
-
-    friend bool operator!=(const CTzeIn& a, const CTzeIn& b)
-    {
+    friend bool operator!=(const CTzeCall& a, const CTzeCall& b) {
         return !(a == b);
     }
 
-    std::string ToString() const;
+    bool corresponds(const CTzeCall& other) const {
+        return (wtype == other.wtype && 
+                wmode == other.wmode &&
+                payload != other.payload);
+    }
+
 };
 
 class CTzeOut
@@ -612,6 +587,43 @@ public:
 
     std::string ToString() const;
 };
+
+class CTzeIn
+{
+public:
+    COutPoint prevout;
+    CTzeCall witness;
+
+    CTzeIn() {
+    }
+
+    CTzeIn(COutPoint prevoutIn, CTzeCall witness) {
+        prevout = prevoutIn;
+        witness = witness;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(prevout);
+        READWRITE(witness);
+    }
+
+    friend bool operator==(const CTzeIn& a, const CTzeIn& b)
+    {
+        return (a.prevout == b.prevout &&
+                a.witness == b.witness);
+    }
+
+    friend bool operator!=(const CTzeIn& a, const CTzeIn& b)
+    {
+        return !(a == b);
+    }
+
+    std::string ToString() const;
+};
+
 
 // Overwinter version group id
 static constexpr uint32_t OVERWINTER_VERSION_GROUP_ID = 0x03C48270;

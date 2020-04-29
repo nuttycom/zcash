@@ -1341,3 +1341,17 @@ pub extern "system" fn librustzcash_mmr_hash_node(
 
     0
 }
+
+#[no_mangle]
+pub extern "C" fn librustzcash_tze_verify(
+    p_extension_id: u32,
+    p_mode: u32,
+    p_payload: &[u8],
+    w_extension_id: u32,
+    w_mode: u32,
+    w_payload: &[u8],
+    height: i32,
+    tx_serialized: &[u8]
+) -> bool {
+    return false;
+}
