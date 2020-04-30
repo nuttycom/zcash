@@ -31,6 +31,7 @@ rand_core = "0.5.1"
 zcash_history = "0.2"
 zcash_primitives = "0.2"
 zcash_proofs = "0.2"
+zcash_extensions_api = "0.0"
 
 [profile.release]
 lto = true
@@ -44,4 +45,5 @@ pairing = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
 zcash_history = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
 zcash_primitives = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
 zcash_proofs = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
+zcash_extensions_api = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
 

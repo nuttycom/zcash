@@ -353,14 +353,18 @@ extern "C" {
     );
 
     bool librustzcash_tze_verify(
-        uint32_t p_extension_id,
-        uint32_t p_mode, 
+        uint32_t cbranch,
+        uint64_t p_extension_id, // TODO: maybe this should use uint32_t all the way through
+        uint64_t p_mode, 
         const unsigned char* p_payload,
-        uint32_t w_extension_id,
-        uint32_t w_mode,
+        size_t p_size,
+        uint64_t w_extension_id,
+        uint64_t w_mode,
         const unsigned char* w_payload,
+        size_t w_size,
         int32_t height,
-        const unsigned char* tx
+        const unsigned char* tx,
+        size_t tx_size
         // TODO: some return channel for errors?
     );
 #ifdef __cplusplus

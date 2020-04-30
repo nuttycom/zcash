@@ -94,7 +94,10 @@ public:
     void FromTx(const CTransaction &tx, int nHeightIn) {
         fCoinBase = tx.IsCoinBase();
         vout = tx.vout;
-        tzeout = tx.tzeout;
+        //FIXME: @str4d mentioned that there is a potiential issue with txid duplication 
+        //if we move the tzeout values here rather than create a separate CCoins/txdb caching
+        //approach. Need more detail.
+        tzeout = tx.tzeout; 
         nHeight = nHeightIn;
         nVersion = tx.nVersion;
         ClearUnspendable();

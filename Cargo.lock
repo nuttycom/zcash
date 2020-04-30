@@ -411,6 +411,7 @@ dependencies = [
  "libc",
  "pairing",
  "rand_core",
+ "zcash_extensions_api",
  "zcash_history",
  "zcash_primitives",
  "zcash_proofs",

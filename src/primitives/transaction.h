@@ -492,8 +492,8 @@ public:
     std::string ToString() const;
 };
 
-typedef uint32_t TzeType;
-typedef uint32_t TzeMode;
+typedef uint64_t TzeType;
+typedef uint64_t TzeMode;
 typedef std::vector<uint8_t> TzePayload;
 
 class CTzeCall

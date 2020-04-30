@@ -1554,7 +1554,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const TZE& tz
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
         PrecomputedTransactionData txdata(tx);
-        if (!ContextualCheckInputs(tze, tx, state, view, true, STANDARD_SCRIPT_VERIFY_FLAGS, true, txdata, Params().GetConsensus(), consensusBranchId))
+        if (!ContextualCheckInputs(tze, tx, state, view, true, STANDARD_SCRIPT_VERIFY_FLAGS, true, txdata, Params().GetConsensus(), consensusBranchId, nextBlockHeight))
         {
             return error("AcceptToMemoryPool: ConnectInputs failed %s", hash.ToString());
         }
@@ -1568,7 +1568,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const TZE& tz
         // There is a similar check in CreateNewBlock() to prevent creating
         // invalid blocks, however allowing such transactions into the mempool
         // can be exploited as a DoS attack.
-        if (!ContextualCheckInputs(tze, tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, Params().GetConsensus(), consensusBranchId))
+        if (!ContextualCheckInputs(tze, tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, Params().GetConsensus(), consensusBranchId, nextBlockHeight))
         {
             return error("AcceptToMemoryPool: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags %s", hash.ToString());
         }
@@ -2157,6 +2157,7 @@ bool ContextualCheckInputs(
     PrecomputedTransactionData& txdata,
     const Consensus::Params& consensusParams,
     uint32_t consensusBranchId,
+    int32_t nHeight,
     std::vector<CScriptCheck> *pvChecks)
 {
     if (!tx.IsCoinBase())
@@ -2236,11 +2237,10 @@ bool ContextualCheckInputs(
                 const CTzeCall& predicate = coins->tzeout[prevout.n].predicate;
                 if (witness.corresponds(predicate)) {
                     // construct the context 
-                    // FIXME: where to get the height?
-                    TzeContext ctx(0, tx);
+                    TzeContext ctx(nHeight, tx);
 
                     // call through to the rust API's verify function
-                    if (!tze.check(witness, predicate, ctx)) {
+                    if (!tze.check(consensusBranchId, witness, predicate, ctx)) {
                         return state.Invalid(false, REJECT_INVALID, "tze check failed");
                     }
                 } else {
@@ -2639,7 +2639,7 @@ static int64_t nTimeCallbacks = 0;
 static int64_t nTimeTotal = 0;
 
 bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex,
-                  CCoinsViewCache& view, const CChainParams& chainparams, const TZE& tze, bool fJustCheck)
+                  CCoinsViewCache& view, const CChainParams& chainparams, bool fJustCheck)
 {
     AssertLockHeld(cs_main);
 
@@ -2835,7 +2835,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
             std::vector<CScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
-            if (!ContextualCheckInputs(tze, tx, state, view, fExpensiveChecks, flags, fCacheResults, txdata[i], chainparams.GetConsensus(), consensusBranchId, nScriptCheckThreads ? &vChecks : NULL))
+            if (!ContextualCheckInputs(chainparams.GetTzeCapability(), tx, state, view, fExpensiveChecks, flags, fCacheResults, txdata[i], chainparams.GetConsensus(), consensusBranchId, pindex->nHeight, nScriptCheckThreads ? &vChecks : NULL))
                 return false;
             control.Add(vChecks);
         }
