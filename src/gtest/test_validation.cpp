@@ -6,6 +6,7 @@
 #include "main.h"
 #include "transaction_builder.h"
 #include "utiltest.h"
+#include "test_tze.cpp"
 
 extern ZCJoinSplit* params;
 
@@ -127,7 +128,7 @@ TEST(Validation, ContextualCheckInputsPassesWithCoinbase) {
         auto consensusBranchId = NetworkUpgradeInfo[idx].nBranchId;
         CValidationState state;
         PrecomputedTransactionData txdata(tx);
-        EXPECT_TRUE(ContextualCheckInputs(tx, state, view, false, 0, false, txdata, Params(CBaseChainParams::MAIN).GetConsensus(), consensusBranchId));
+        EXPECT_TRUE(ContextualCheckInputs(MockTZE::getInstance(), tx, state, view, false, 0, false, txdata, Params(CBaseChainParams::MAIN).GetConsensus(), consensusBranchId, chainActive.Height()));
     }
 }
 
@@ -179,8 +180,8 @@ TEST(Validation, ContextualCheckInputsDetectsOldBranchId) {
     CValidationState state;
     PrecomputedTransactionData txdata(tx);
     EXPECT_TRUE(ContextualCheckInputs(
-        tx, state, view, true, 0, false, txdata,
-        consensusParams, overwinterBranchId));
+        MockTZE::getInstance(), tx, state, view, true, 0, false, txdata,
+        consensusParams, overwinterBranchId, chainActive.Height()));
 
     // Attempt to validate the inputs against Sapling. We should be notified
     // that an old consensus branch ID was used for an input.
@@ -192,8 +193,8 @@ TEST(Validation, ContextualCheckInputsDetectsOldBranchId) {
             HexInt(overwinterBranchId)),
         false)).Times(1);
     EXPECT_FALSE(ContextualCheckInputs(
-        tx, mockState, view, true, 0, false, txdata,
-        consensusParams, saplingBranchId));
+        MockTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
+        consensusParams, saplingBranchId, chainActive.Height()));
 
     // Attempt to validate the inputs against Blossom. All we should learn is
     // that the signature is invalid, because we don't check more than one
@@ -203,8 +204,8 @@ TEST(Validation, ContextualCheckInputsDetectsOldBranchId) {
         "mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
         false)).Times(1);
     EXPECT_FALSE(ContextualCheckInputs(
-        tx, mockState, view, true, 0, false, txdata,
-        consensusParams, blossomBranchId));
+        MockTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
+        consensusParams, blossomBranchId, chainActive.Height()));
 
     // Tear down
     chainActive.SetTip(NULL);

@@ -2179,11 +2179,11 @@ bool ContextualCheckInputs(
         if (fScriptChecks) {
             for (unsigned int i = 0; i < tx.vin.size(); i++) {
                 const COutPoint &prevout = tx.vin[i].prevout;
-                const CCoins* coins = inputs.AccessCoins(prevout.hash);
-                assert(coins);
+                const CCoins* pCoins = inputs.AccessCoins(prevout.hash);
+                assert(pCoins);
 
                 // Verify signature
-                CScriptCheck check(*coins, tx, i, flags, cacheStore, consensusBranchId, &txdata);
+                CScriptCheck check(*pCoins, tx, i, flags, cacheStore, consensusBranchId, &txdata);
                 if (pvChecks) {
                     pvChecks->push_back(CScriptCheck());
                     check.swap(pvChecks->back());
@@ -2196,7 +2196,7 @@ bool ContextualCheckInputs(
                     // notice their transactions failing before a second network
                     // upgrade occurs.
                     auto prevConsensusBranchId = PrevEpochBranchId(consensusBranchId, consensusParams);
-                    CScriptCheck checkPrev(*coins, tx, i, flags, cacheStore, prevConsensusBranchId, &txdata);
+                    CScriptCheck checkPrev(*pCoins, tx, i, flags, cacheStore, prevConsensusBranchId, &txdata);
                     if (checkPrev()) {
                         return state.DoS(
                             10, false, REJECT_INVALID, strprintf(
@@ -2211,7 +2211,7 @@ bool ContextualCheckInputs(
                         // arguments; if so, don't trigger DoS protection to
                         // avoid splitting the network between upgraded and
                         // non-upgraded nodes.
-                        CScriptCheck check2(*coins, tx, i,
+                        CScriptCheck check2(*pCoins, tx, i,
                                 flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS, cacheStore, consensusBranchId, &txdata);
                         if (check2())
                             return state.Invalid(false, REJECT_NONSTANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(check.GetScriptError())));
@@ -2227,25 +2227,26 @@ bool ContextualCheckInputs(
             // to the extension checker.
             for (unsigned int i = 0; i < tx.tzein.size(); i++) {
                 const COutPoint& prevout = tx.tzein[i].prevout;
-                const CCoins* coins = inputs.AccessCoins(prevout.hash);
-                assert(coins && coins->tzeout.size() > prevout.n);
+                const CCoins* pCoins = inputs.AccessCoins(prevout.hash);
+                assert(pCoins && pCoins->tzeout.size() > prevout.n);
 
                 // Check that the witness has the same tze type and mode as the
                 // predicate. This might be duplicative of a check within the
                 // TZE code itself?
                 const CTzeCall& witness = tx.tzein[i].witness;
-                const CTzeCall& predicate = coins->tzeout[prevout.n].predicate;
+                const CTzeCall& predicate = pCoins->tzeout[prevout.n].predicate;
                 if (witness.corresponds(predicate)) {
                     // construct the context 
                     TzeContext ctx(nHeight, tx);
 
                     // call through to the rust API's verify function
                     if (!tze.check(consensusBranchId, witness, predicate, ctx)) {
-                        return state.Invalid(false, REJECT_INVALID, "tze check failed");
+                        // FIXME: Need proper levels
+                        return state.DoS(10, false, REJECT_INVALID, "tze check failed");
                     }
                 } else {
                     // FIXME: Placeholder, what should the actual rejection be? 
-                    return state.Invalid(false, REJECT_INVALID, "tze id or mode mismatch");
+                    return state.DoS(100, false, REJECT_INVALID, "tze id or mode mismatch");
                 }
             }
 

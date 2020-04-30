@@ -38,6 +38,14 @@ static_assert(SAPLING_TX_VERSION >= SAPLING_MIN_TX_VERSION,
 static_assert(SAPLING_TX_VERSION <= SAPLING_MAX_TX_VERSION,
     "Sapling tx version must not be higher than maximum");
 
+// Nu4 transaction version
+static const int32_t NU4_TX_VERSION = 5;
+static_assert(NU4_TX_VERSION >= NU4_MIN_TX_VERSION,
+    "Nu4 tx version must not be lower than minimum");
+static_assert(NU4_TX_VERSION <= NU4_MAX_TX_VERSION,
+    "Nu4 tx version must not be higher than maximum");
+
+
 // These constants are defined in the protocol § 7.1:
 // https://zips.z.cash/protocol/protocol.pdf#txnencoding
 #define OUTPUTDESCRIPTION_SIZE 948
@@ -633,6 +641,10 @@ static_assert(OVERWINTER_VERSION_GROUP_ID != 0, "version group id must be non-ze
 static constexpr uint32_t SAPLING_VERSION_GROUP_ID = 0x892F2085;
 static_assert(SAPLING_VERSION_GROUP_ID != 0, "version group id must be non-zero as specified in ZIP 202");
 
+// Nu4 version group id
+static constexpr uint32_t NU4_VERSION_GROUP_ID = 0x83252789;
+static_assert(NU4_VERSION_GROUP_ID != 0, "version group id must be non-zero as specified in ZIP 202");
+
 struct CMutableTransaction;
 
 /** The basic transaction that is broadcasted on the network and contained in
@@ -737,24 +749,31 @@ public:
             fOverwintered &&
             nVersionGroupId == SAPLING_VERSION_GROUP_ID &&
             nVersion == SAPLING_TX_VERSION;
-        if (fOverwintered && !(isOverwinterV3 || isSaplingV4)) {
+        bool isNu4V5 = 
+            fOverwintered && 
+            nVersionGroupId == NU4_VERSION_GROUP_ID &&
+            nVersion == NU4_TX_VERSION;
+        if (fOverwintered && !(isOverwinterV3 || isSaplingV4 || isNu4V5)) {
             throw std::ios_base::failure("Unknown transaction format");
         }
 
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
         READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
-        READWRITE(*const_cast<std::vector<CTzeIn>*>(&tzein));
-        READWRITE(*const_cast<std::vector<CTzeOut>*>(&tzeout));
+        if (isNu4V5) {
+            READWRITE(*const_cast<std::vector<CTzeIn>*>(&tzein));
+            READWRITE(*const_cast<std::vector<CTzeOut>*>(&tzeout));
+        }
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
-        if (isOverwinterV3 || isSaplingV4) {
+        if (isOverwinterV3 || isSaplingV4 || isNu4V5) {
             READWRITE(*const_cast<uint32_t*>(&nExpiryHeight));
         }
-        if (isSaplingV4) {
+        if (isSaplingV4 || isNu4V5) {
             READWRITE(*const_cast<CAmount*>(&valueBalance));
             READWRITE(*const_cast<std::vector<SpendDescription>*>(&vShieldedSpend));
             READWRITE(*const_cast<std::vector<OutputDescription>*>(&vShieldedOutput));
         }
         if (nVersion >= 2) {
+            // These fields do not depend on fOverwintered
             auto os = WithVersion(&s, static_cast<int>(header));
             ::SerReadWrite(os, *const_cast<std::vector<JSDescription>*>(&vJoinSplit), ser_action);
             if (vJoinSplit.size() > 0) {
@@ -762,7 +781,7 @@ public:
                 READWRITE(*const_cast<joinsplit_sig_t*>(&joinSplitSig));
             }
         }
-        if (isSaplingV4 && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
+        if ((isSaplingV4 || isNu4V5) && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
             READWRITE(*const_cast<binding_sig_t*>(&bindingSig));
         }
         if (ser_action.ForRead())
@@ -841,6 +860,8 @@ struct CMutableTransaction
     uint32_t nVersionGroupId;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
+    std::vector<CTzeIn> tzein;
+    std::vector<CTzeOut> tzeout;
     uint32_t nLockTime;
     uint32_t nExpiryHeight;
     CAmount valueBalance;
@@ -885,17 +906,25 @@ struct CMutableTransaction
             fOverwintered &&
             nVersionGroupId == SAPLING_VERSION_GROUP_ID &&
             nVersion == SAPLING_TX_VERSION;
-        if (fOverwintered && !(isOverwinterV3 || isSaplingV4)) {
+        bool isNu4V5 = 
+            fOverwintered && 
+            nVersionGroupId == NU4_VERSION_GROUP_ID &&
+            nVersion == NU4_TX_VERSION;
+        if (fOverwintered && !(isOverwinterV3 || isSaplingV4 || isNu4V5)) {
             throw std::ios_base::failure("Unknown transaction format");
         }
 
         READWRITE(vin);
         READWRITE(vout);
+        if (isNu4V5) {
+            READWRITE(tzein);
+            READWRITE(tzeout);
+        }
         READWRITE(nLockTime);
-        if (isOverwinterV3 || isSaplingV4) {
+        if (isOverwinterV3 || isSaplingV4 || isNu4V5) {
             READWRITE(nExpiryHeight);
         }
-        if (isSaplingV4) {
+        if (isSaplingV4 || isNu4V5) {
             READWRITE(valueBalance);
             READWRITE(vShieldedSpend);
             READWRITE(vShieldedOutput);
@@ -908,7 +937,7 @@ struct CMutableTransaction
                 READWRITE(joinSplitSig);
             }
         }
-        if (isSaplingV4 && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
+        if ((isSaplingV4 || isNu4V5) && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
             READWRITE(bindingSig);
         }
     }
