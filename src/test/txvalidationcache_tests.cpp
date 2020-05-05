@@ -11,7 +11,7 @@
 #include "random.h"
 #include "script/standard.h"
 #include "test/test_bitcoin.h"
-#include "tze.cpp"
+#include "test/test_tze.cpp"
 #include "utiltime.h"
 
 #include <boost/test/unit_test.hpp>
@@ -24,7 +24,7 @@ ToMemPool(CMutableTransaction& tx)
     LOCK(cs_main);
 
     CValidationState state;
-    return AcceptToMemoryPool(mempool, state, LibrustzcashTZE::getInstance(), tx, false, NULL, false);
+    return AcceptToMemoryPool(mempool, state, MockTZE::getInstance(), tx, false, NULL, false);
 }
 
 #ifdef ENABLE_MINING

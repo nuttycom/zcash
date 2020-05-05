@@ -4,9 +4,9 @@
 #include "consensus/upgrades.h"
 #include "consensus/validation.h"
 #include "main.h"
+#include "test/test_tze.cpp"
 #include "transaction_builder.h"
 #include "utiltest.h"
-#include "test_tze.cpp"
 
 extern ZCJoinSplit* params;
 

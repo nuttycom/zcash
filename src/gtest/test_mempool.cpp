@@ -7,7 +7,7 @@
 #include "main.h"
 #include "primitives/transaction.h"
 #include "txmempool.h"
-#include "test_tze.cpp"
+#include "test/test_tze.cpp"
 #include "policy/fees.h"
 #include "util.h"
 
