@@ -84,6 +84,7 @@ testScripts=(
     'mining_shielded_coinbase.py'
     'framework.py'
     'feature_zip221.py'
+    'heartwood_rollback.py'
 );
 testScriptsExt=(
     'getblocktemplate_longpoll.py'

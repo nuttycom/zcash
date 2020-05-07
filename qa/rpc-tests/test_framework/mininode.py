@@ -62,7 +62,6 @@ NU4_BRANCH_ID = 0xE9FF75A6
 
 MAX_INV_SZ = 50000
 
-
 COIN = 100000000 # 1 zec in zatoshis
 
 # Keep our own socket map for asyncore, so that we can track disconnects
@@ -85,6 +84,9 @@ def sha256(s):
 
 def hash256(s):
     return sha256(sha256(s))
+
+def nuparams(branch_id, height):
+    return '-nuparams=%x:%d' % (branch_id, height)
 
 
 def ser_compactsize(n):
