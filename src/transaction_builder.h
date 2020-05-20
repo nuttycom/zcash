@@ -137,6 +137,10 @@ public:
 
     void AddTransparentOutput(const CTxDestination& to, CAmount value);
 
+    // void AddTzeInput(COutPoint utxo, CTzeData witness);
+
+    // void AddTzeOutput(CAmount value, CTzeData predicate);
+
     void SendChangeTo(libzcash::SaplingPaymentAddress changeAddr, uint256 ovk);
 
     void SendChangeTo(libzcash::SproutPaymentAddress);

@@ -504,17 +504,17 @@ typedef uint64_t TzeType;
 typedef uint64_t TzeMode;
 typedef std::vector<uint8_t> TzePayload;
 
-class CTzeCall
+class CTzeData
 {
 public:
     TzeType extensionId;
     TzeMode mode;
     TzePayload payload;
 
-    CTzeCall() {
+    CTzeData() {
     }
 
-    CTzeCall(TzeType extensionId, TzeMode mode, TzePayload payload) {
+    CTzeData(TzeType extensionId, TzeMode mode, TzePayload payload) {
         extensionId = extensionId;
         mode = mode;
         payload = payload;
@@ -529,18 +529,18 @@ public:
         READWRITE(payload);
     }
 
-    friend bool operator==(const CTzeCall& a, const CTzeCall& b)
+    friend bool operator==(const CTzeData& a, const CTzeData& b)
     {
         return (a.extensionId == b.extensionId &&
                 a.mode == b.mode &&
                 a.payload == b.payload);
     }
 
-    friend bool operator!=(const CTzeCall& a, const CTzeCall& b) {
+    friend bool operator!=(const CTzeData& a, const CTzeData& b) {
         return !(a == b);
     }
 
-    bool corresponds(const CTzeCall& other) const {
+    bool corresponds(const CTzeData& other) const {
         return (extensionId == other.extensionId && 
                 mode == other.mode &&
                 payload != other.payload);
@@ -552,13 +552,13 @@ class CTzeOut
 {
 public:
     CAmount nValue;
-    CTzeCall predicate;
+    CTzeData predicate;
 
     CTzeOut() {
         SetNull();
     }
 
-    CTzeOut(const CAmount& nValueIn, CTzeCall predicateIn) {
+    CTzeOut(const CAmount& nValueIn, CTzeData predicateIn) {
         nValue = nValueIn;
         predicate = predicateIn;
     }
@@ -600,12 +600,12 @@ class CTzeIn
 {
 public:
     COutPoint prevout;
-    CTzeCall witness;
+    CTzeData witness;
 
     CTzeIn() {
     }
 
-    CTzeIn(COutPoint prevoutIn, CTzeCall witness) {
+    CTzeIn(COutPoint prevoutIn, CTzeData witness) {
         prevout = prevoutIn;
         witness = witness;
     }

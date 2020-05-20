@@ -186,6 +186,27 @@ std::string CTxOut::ToString() const
     return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 }
 
+std::string CTzeIn::ToString() const
+{
+    std::string str;
+    str += "CTzeIn(prevout=";
+    str += prevout.ToString();
+    str += strprintf(", extensionid=%u", witness.extensionId);
+    str += strprintf(", mode=%u", witness.mode);
+    return str;
+}
+
+std::string CTzeOut::ToString() const
+{
+    std::string str;
+    str += "CTzeOut(";
+    str += strprintf("nValue=%d.%08d", nValue / COIN, nValue % COIN);
+    str += strprintf(", extensionid=%u", predicate.extensionId);
+    str += strprintf(", mode=%u", predicate.mode);
+    return str;
+}
+
+    
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::SPROUT_MIN_CURRENT_VERSION), fOverwintered(false), nVersionGroupId(0), nExpiryHeight(0), nLockTime(0), valueBalance(0) {}
 CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId), nExpiryHeight(tx.nExpiryHeight),
                                                                    vin(tx.vin), vout(tx.vout), tzein(tx.tzein), tzeout(tx.tzeout), nLockTime(tx.nLockTime),
@@ -193,7 +214,6 @@ CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.n
                                                                    vJoinSplit(tx.vJoinSplit), joinSplitPubKey(tx.joinSplitPubKey), joinSplitSig(tx.joinSplitSig),
                                                                    bindingSig(tx.bindingSig)
 {
-    
 }
 
 uint256 CMutableTransaction::GetHash() const
@@ -268,6 +288,13 @@ CAmount CTransaction::GetValueOut() const
 {
     CAmount nValueOut = 0;
     for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
+    {
+        nValueOut += it->nValue;
+        if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
+            throw std::runtime_error("CTransaction::GetValueOut(): value out of range");
+    }
+
+    for (std::vector<CTzeOut>::const_iterator it(tzeout.begin()); it != tzeout.end(); ++it)
     {
         nValueOut += it->nValue;
         if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
@@ -369,13 +396,15 @@ std::string CTransaction::ToString() const
             vShieldedSpend.size(),
             vShieldedOutput.size());
     } else if (nVersion >= 3) {
-        str += strprintf("CTransaction(hash=%s, ver=%d, fOverwintered=%d, nVersionGroupId=%08x, vin.size=%u, vout.size=%u, nLockTime=%u, nExpiryHeight=%u)\n",
+        str += strprintf("CTransaction(hash=%s, ver=%d, fOverwintered=%d, nVersionGroupId=%08x, vin.size=%u, tzein.size=%u, vout.size=%u, tzeout.size=%u, nLockTime=%u, nExpiryHeight=%u)\n",
             GetHash().ToString().substr(0,10),
             nVersion,
             fOverwintered,
             nVersionGroupId,
             vin.size(),
+            tzein.size(),
             vout.size(),
+            tzeout.size(),
             nLockTime,
             nExpiryHeight);
     }
@@ -383,5 +412,9 @@ std::string CTransaction::ToString() const
         str += "    " + vin[i].ToString() + "\n";
     for (unsigned int i = 0; i < vout.size(); i++)
         str += "    " + vout[i].ToString() + "\n";
+    for (unsigned int i = 0; i < tzein.size(); i++)
+        str += "    " + tzein[i].ToString() + "\n";
+    for (unsigned int i = 0; i < tzeout.size(); i++)
+        str += "    " + tzeout[i].ToString() + "\n";
     return str;
 }

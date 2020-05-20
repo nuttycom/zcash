@@ -24,14 +24,25 @@ void ExpectOptionalAmount(CAmount expected, boost::optional<CAmount> actual) {
     }
 }
 
+struct ValidationFakeCoin {
+    uint256 blockHash;
+    uint256 txid;
+    boost::optional<CTxOut> txout;
+    boost::optional<CTzeOut> tzeout;
+    int nHeight;
+};
+
 // Fake a view that optionally contains a single coin.
 class ValidationFakeCoinsViewDB : public CCoinsView {
-public:
-    boost::optional<std::pair<std::pair<uint256, uint256>, std::pair<CTxOut, int>>> coin;
+private:
+    boost::optional<ValidationFakeCoin> tCoin;
 
+public:
     ValidationFakeCoinsViewDB() {}
     ValidationFakeCoinsViewDB(uint256 blockHash, uint256 txid, CTxOut txOut, int nHeight) :
-        coin(std::make_pair(std::make_pair(blockHash, txid), std::make_pair(txOut, nHeight))) {}
+        tCoin({blockHash, txid, txOut, boost::none, nHeight}) {}
+    ValidationFakeCoinsViewDB(uint256 blockHash, uint256 txid, CTzeOut tzeOut, int nHeight) :
+        tCoin({blockHash, txid, boost::none, tzeOut, nHeight}) {}
 
     bool GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const {
         return false;
@@ -46,11 +57,12 @@ public:
     }
 
     bool GetCoins(const uint256 &txid, CCoins &coins) const {
-        if (coin && txid == coin.get().first.second) {
+        if (tCoin && txid == tCoin.get().txid) {
             CCoins newCoins;
             newCoins.vout.resize(2);
-            newCoins.vout[0] = coin.get().second.first;
-            newCoins.nHeight = coin.get().second.second;
+            if (tCoin.get().txout)  newCoins.vout[0] = tCoin.get().txout.get();
+            if (tCoin.get().tzeout) newCoins.tzeout[0] = tCoin.get().tzeout.get();
+            newCoins.nHeight = tCoin.get().nHeight;
             coins.swap(newCoins);
             return true;
         } else {
@@ -59,7 +71,7 @@ public:
     }
 
     bool HaveCoins(const uint256 &txid) const {
-        if (coin && txid == coin.get().first.second) {
+        if (tCoin && txid == tCoin.get().txid) {
             return true;
         } else {
             return false;
@@ -67,8 +79,8 @@ public:
     }
 
     uint256 GetBestBlock() const {
-        if (coin) {
-            return coin.get().first.first;
+        if (tCoin) {
+            return tCoin.get().blockHash;
         } else {
             uint256 a;
             return a;
@@ -290,3 +302,88 @@ TEST(Validation, ReceivedBlockTransactions) {
         ExpectOptionalAmount(30, fakeIndex2.nChainSproutValue);
     }
 }
+
+// TEST(Validation, ContextualCheckInputsPassesWithTZE) {
+//     SelectParams(CBaseChainParams::REGTEST);
+//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 10);
+//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, 20);
+//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_BLOSSOM, 30);
+//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_HEARTWOOD, 40);
+//     auto consensusParams = Params(CBaseChainParams::REGTEST).GetConsensus();
+// 
+//     auto overwinterBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
+//     auto saplingBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId;
+//     auto blossomBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_BLOSSOM].nBranchId;
+//     auto heartwoodBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_HEARTWOOD].nBranchId;
+// 
+//     CBasicKeyStore keystore;
+//     CKey tsk = AddTestCKeyToKeyStore(keystore);
+//     CTxDestination destination = tsk.GetPubKey().GetID();
+//     CScript scriptPubKey = GetScriptForDestination(destination);
+// 
+//     // Create a fake block. It doesn't need to contain any transactions; we just
+//     // need it to be in the global state when our fake view is used.
+//     CBlock block;
+//     block.hashMerkleRoot = block.BuildMerkleTree();
+//     auto blockHash = block.GetHash();
+//     CBlockIndex fakeIndex {block};
+//     mapBlockIndex.insert(std::make_pair(blockHash, &fakeIndex));
+//     chainActive.SetTip(&fakeIndex);
+// 
+//     // Fake a view containing a single coin.
+//     CAmount coinValue(50000);
+//     COutPoint utxo;
+//     utxo.hash = uint256S("4242424242424242424242424242424242424242424242424242424242424242");
+//     utxo.n = 0;
+//     CTzeOut tzeOut;
+//     tzeOut.nValue = coinValue;
+//     tzeOut.predicate = 
+//     ValidationFakeCoinsViewDB fakeDB(blockHash, utxo.hash, tzeOut, 12);
+//     CCoinsViewCache view(&fakeDB);
+// 
+//     // Create a transparent transaction that spends the coin, targeting
+//     // a height during the Overwinter epoch.
+//     auto builder = TransactionBuilder(consensusParams, 15, &keystore);
+//     builder.AddTransparentInput(utxo, scriptPubKey, coinValue);
+//     builder.AddTransparentOutput(destination, 40000);
+//     auto tx = builder.Build().GetTxOrThrow();
+//     ASSERT_FALSE(tx.IsCoinBase());
+// 
+//     // Ensure that the inputs validate against Overwinter.
+//     CValidationState state;
+//     PrecomputedTransactionData txdata(tx);
+//     EXPECT_TRUE(ContextualCheckInputs(
+//         MockTZE::getInstance(), tx, state, view, true, 0, false, txdata,
+//         consensusParams, overwinterBranchId, chainActive.Height()));
+// 
+//     // Attempt to validate the inputs against Sapling. We should be notified
+//     // that an old consensus branch ID was used for an input.
+//     MockCValidationState mockState;
+//     EXPECT_CALL(mockState, DoS(
+//         10, false, REJECT_INVALID,
+//         strprintf("old-consensus-branch-id (Expected %s, found %s)",
+//             HexInt(saplingBranchId),
+//             HexInt(overwinterBranchId)),
+//         false)).Times(1);
+//     EXPECT_FALSE(ContextualCheckInputs(
+//         MockTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
+//         consensusParams, saplingBranchId, chainActive.Height()));
+// 
+//     // Attempt to validate the inputs against Blossom. All we should learn is
+//     // that the signature is invalid, because we don't check more than one
+//     // network upgrade back.
+//     EXPECT_CALL(mockState, DoS(
+//         100, false, REJECT_INVALID,
+//         "mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
+//         false)).Times(1);
+//     EXPECT_FALSE(ContextualCheckInputs(
+//         MockTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
+//         consensusParams, blossomBranchId, chainActive.Height()));
+// 
+//     // Tear down
+//     chainActive.SetTip(NULL);
+//     mapBlockIndex.erase(blockHash);
+// 
+//     // Revert to default
+//     RegtestDeactivateBlossom();
+// }

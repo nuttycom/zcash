@@ -12,7 +12,7 @@ public:
         return instance;
     }
 
-    virtual bool check(uint32_t consensusBranchId, const CTzeCall& predicate, const CTzeCall& witness, const TzeContext& ctx) const {
+    virtual bool check(uint32_t consensusBranchId, const CTzeData& predicate, const CTzeData& witness, const TzeContext& ctx) const {
         return true;
     }
 

@@ -48,6 +48,7 @@ static const char DB_SPENTINDEX = 'p';
 static const char DB_TIMESTAMPINDEX = 'T';
 static const char DB_BLOCKHASHINDEX = 'h';
 
+
 CCoinsViewDB::CCoinsViewDB(std::string dbName, size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe) {
 }
 
@@ -97,10 +98,12 @@ bool CCoinsViewDB::GetNullifier(const uint256 &nf, ShieldedType type) const {
 }
 
 bool CCoinsViewDB::GetCoins(const uint256 &txid, CCoins &coins) const {
-    bool coinsRead = db.Read(make_pair(DB_COINS, txid), coins);
+    CCoinsSer cs(coins);
+    bool coinsRead = db.Read(make_pair(DB_COINS, txid), cs);
 
     CTzeCoinsSer tcs(coins);
     bool tzeRead = db.Read(make_pair(DB_TZE_COINS, txid), tcs);
+
     return coinsRead && tzeRead;
 }
 
@@ -242,7 +245,7 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins,
                 batch.Erase(make_pair(DB_COINS, it->first));
                 batch.Erase(make_pair(DB_TZE_COINS, it->first));
             } else {
-                batch.Write(make_pair(DB_COINS, it->first), it->second.coins);
+                batch.Write(make_pair(DB_COINS, it->first), CCoinsSer(it->second.coins));
                 batch.Write(make_pair(DB_TZE_COINS, it->first), CTzeCoinsSer(it->second.coins));
             }
             changed++;
@@ -309,11 +312,12 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
         boost::this_thread::interruption_point();
         std::pair<char, uint256> key;
         CCoins coins;
+        CCoinsSer cs(coins);
         if (pcursor->GetKey(key) && key.first == DB_COINS) {
-            if (pcursor->GetValue(coins)) {
+            if (pcursor->GetValue(cs)) {
                 stats.nTransactions++;
-                for (unsigned int i=0; i<coins.vout.size(); i++) {
-                    const CTxOut &out = coins.vout[i];
+                for (unsigned int i=0; i<cs.coins.vout.size(); i++) {
+                    const CTxOut &out = cs.coins.vout[i];
                     if (!out.IsNull()) {
                         stats.nTransactionOutputs++;
                         ss << VARINT(i+1);

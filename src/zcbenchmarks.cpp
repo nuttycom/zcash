@@ -439,6 +439,7 @@ double benchmark_increment_sapling_note_witnesses(size_t nTxs)
 
 // The following constant is a duplicate of the one found in txdb.cpp
 static const char DB_COINS = 'c';
+static const char DB_TZE_COINS = 'C';
 
 class FakeCoinsViewDB : public CCoinsView {
 
@@ -472,7 +473,9 @@ public:
     }
 
     bool GetCoins(const uint256 &txid, CCoins &coins) const {
-        return db.Read(std::make_pair(DB_COINS, txid), coins);
+        CCoinsSer cs(coins);
+        return db.Read(std::make_pair(DB_COINS, txid), cs) &&
+               db.Read(std::make_pair(DB_TZE_COINS, txid), cs);
     }
 
     bool HaveCoins(const uint256 &txid) const {
