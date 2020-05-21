@@ -11,14 +11,18 @@
 
 #include <assert.h>
 
+/**
+ * If the vout at the specified position is non-null, nullify
+ * it then remove nullified entries from the list of vouts.
+ */
 bool CCoins::Spend(uint32_t nPos) 
 {
+    // Why the .IsNull() check here? This stops us from running
+    // the Cleanup() call 
     if (nPos >= vout.size() || vout[nPos].IsNull())
         return false;
     vout[nPos].SetNull();
     Cleanup();
-
-    // TZE: does this need an analogous operation? What does the comment above have to do with this?
 
     return true;
 }

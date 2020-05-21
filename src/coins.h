@@ -52,8 +52,6 @@ public:
         nHeight = nHeightIn;
         nVersion = tx.nVersion;
         ClearUnspendable();
-        // We don't have a spendability analog for TZE outputs, since we can't
-        // inspect them without calling in to TZE code.
     }
 
     //! construct a CCoins from a CTransaction, at a given height
@@ -153,6 +151,7 @@ public:
         BOOST_FOREACH(const CTxOut &out, vout) {
             ret += RecursiveDynamicUsage(out.scriptPubKey);
         }
+        // TZE: do we need the same here?
         return ret;
     }
 };
