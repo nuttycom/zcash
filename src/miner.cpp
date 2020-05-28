@@ -274,6 +274,8 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
             double dPriority = 0;
             CAmount nTotalIn = 0;
             bool fMissingInputs = false;
+
+            // Add transparent input value
             BOOST_FOREACH(const CTxIn& txin, tx.vin)
             {
                 // Read prev transaction
@@ -314,6 +316,46 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
 
                 dPriority += (double)nValueIn * nConf;
             }
+
+            // Add TZE input value
+            BOOST_FOREACH(const CTzeIn& tzein, tx.tzein)
+            {
+                // Read prev transaction
+                if (!view.HaveCoins(tzein.prevout.hash))
+                {
+                    // This should never happen; all transactions in the memory
+                    // pool should connect to either transactions in the chain
+                    // or other transactions in the memory pool.
+                    if (!mempool.mapTx.count(tzein.prevout.hash))
+                    {
+                        LogPrintf("ERROR: mempool transaction missing input\n");
+                        if (fDebug) assert("mempool transaction missing input" == 0);
+                        fMissingInputs = true;
+                        if (porphan)
+                            vOrphan.pop_back();
+                        break;
+                    }
+
+                    // Has to wait for dependencies
+                    if (!porphan)
+                    {
+                        // Use list for automatic deletion
+                        vOrphan.push_back(COrphan(&tx));
+                        porphan = &vOrphan.back();
+                    }
+                    mapDependers[tzein.prevout.hash].push_back(porphan);
+                    porphan->setDependsOn.insert(tzein.prevout.hash);
+                    nTotalIn += mempool.mapTx.find(tzein.prevout.hash)->GetTx().tzeout[tzein.prevout.n].nValue;
+                    continue;
+                }
+
+                const CCoins* coins = view.AccessCoins(tzein.prevout.hash);
+                assert(coins);
+
+                nTotalIn += coins->vtzeout[tzein.prevout.n].first.nValue;
+            }
+
+            // Add shielded input value
             nTotalIn += tx.GetShieldedValueIn();
 
             if (fMissingInputs) continue;

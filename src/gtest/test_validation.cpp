@@ -61,7 +61,7 @@ public:
             CCoins newCoins;
             newCoins.vout.resize(2);
             if (tCoin.get().txout)  newCoins.vout[0] = tCoin.get().txout.get();
-            if (tCoin.get().tzeout) newCoins.tzeout[0] = tCoin.get().tzeout.get();
+            if (tCoin.get().tzeout) newCoins.vtzeout[0] = std::make_pair(tCoin.get().tzeout.get(), UNSPENT);
             newCoins.nHeight = tCoin.get().nHeight;
             coins.swap(newCoins);
             return true;

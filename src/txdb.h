@@ -307,9 +307,9 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        for (unsigned int i = 0; i < coins.tzeout.size(); i++) {
-            if (!coins.tzeout[i].IsNull())
-                ::Serialize(s, CTzeOutSer(REF(coins.tzeout[i])));
+        for (unsigned int i = 0; i < coins.vtzeout.size(); i++) {
+            if (!coins.vtzeout[i].second)
+                ::Serialize(s, CTzeOutSer(REF(coins.vtzeout[i].first)));
         }
     }
 };

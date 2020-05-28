@@ -20,12 +20,18 @@
 #include "zcash/History.hpp"
 #include "zcash/IncrementalMerkleTree.hpp"
 
+enum Spentness {
+    UNSPENT,
+    SPENT
+};
+
 /** 
  * Pruned version of CTransaction: only retains metadata and unspent transaction outputs
  */
 class CCoins
 {
 public:
+
     //! whether transaction is a coinbase
     bool fCoinBase;
 
@@ -33,7 +39,8 @@ public:
     std::vector<CTxOut> vout;
 
     //! unconsumed transparent extension outputs 
-    std::vector<CTzeOut> tzeout;
+    typedef std::pair<CTzeOut, Spentness> CTzeOutEntry;
+    std::vector<CTzeOutEntry> vtzeout;
 
     //! at which height this transaction was included in the active block chain
     int nHeight;
@@ -45,10 +52,9 @@ public:
     void FromTx(const CTransaction &tx, int nHeightIn) {
         fCoinBase = tx.IsCoinBase();
         vout = tx.vout;
-        //FIXME: @str4d mentioned that there is a potiential issue with txid duplication 
-        //if we move the tzeout values here rather than create a separate CCoins/txdb caching
-        //approach. Need more detail.
-        tzeout = tx.tzeout; 
+        for (uint32_t i = 0; i < tx.tzeout.size(); i++ ) {
+            vtzeout.push_back(std::make_pair(tx.tzeout[i], UNSPENT));
+        }
         nHeight = nHeightIn;
         nVersion = tx.nVersion;
         ClearUnspendable();
@@ -62,25 +68,31 @@ public:
     void Clear() {
         fCoinBase = false;
         std::vector<CTxOut>().swap(vout);
-        std::vector<CTzeOut>().swap(tzeout);
+        std::vector<CTzeOutEntry>().swap(vtzeout);
         nHeight = 0;
         nVersion = 0;
     }
 
     //! empty constructor
-    CCoins() : fCoinBase(false), vout(0), tzeout(0), nHeight(0), nVersion(0) { }
+    CCoins() : fCoinBase(false), vout(0), vtzeout(), nHeight(0), nVersion(0) { }
 
-    //!remove spent outputs at the end of vout
+    /** 
+     * Remove spent outputs at the end of vout & tzeout.
+     *
+     * This is principally useful in relation to the serialized form; it should
+     * likely be removed from the interface in favor of the serialization code
+     * handling the appropriate compactions. --kjn
+     */
     void Cleanup() {
         while (vout.size() > 0 && vout.back().IsNull())
             vout.pop_back();
         if (vout.empty())
             std::vector<CTxOut>().swap(vout);
 
-        while (tzeout.size() > 0 && tzeout.back().IsNull())
-            tzeout.pop_back();
-        if (tzeout.empty())
-            std::vector<CTzeOut>().swap(tzeout);
+        while (vtzeout.size() > 0 && vtzeout.back().second == SPENT)
+            vtzeout.pop_back();
+        if (vtzeout.empty())
+            std::vector<CTzeOutEntry>().swap(vtzeout);
     }
 
     void ClearUnspendable() {
@@ -97,7 +109,7 @@ public:
     void swap(CCoins &to) {
         std::swap(to.fCoinBase, fCoinBase);
         to.vout.swap(vout);
-        to.tzeout.swap(tzeout);
+        to.vtzeout.swap(vtzeout);
         std::swap(to.nHeight, nHeight);
         std::swap(to.nVersion, nVersion);
     }
@@ -112,7 +124,7 @@ public:
                 a.nHeight == b.nHeight &&
                 a.nVersion == b.nVersion &&
                 a.vout == b.vout;
-                a.tzeout == b.tzeout;
+                a.vtzeout == b.vtzeout;
     }
     friend bool operator!=(const CCoins &a, const CCoins &b) {
         return !(a == b);
@@ -122,8 +134,11 @@ public:
         return fCoinBase;
     }
 
-    //! mark a vout spent
+    //! mark a txout spent
     bool Spend(uint32_t nPos);
+
+    //! mark a tzeout spent
+    bool SpendTzeOut(uint32_t nPos);
 
     //! check whether a particular output is still available
     bool IsAvailable(unsigned int nPos) const {
@@ -131,7 +146,7 @@ public:
     }
 
     bool IsTzeAvailable(unsigned int nPos) const {
-        return (nPos < tzeout.size() && !tzeout[nPos].IsNull());
+        return nPos < vtzeout.size() && vtzeout[nPos].second == UNSPENT;
     }
 
     //! check whether the entire CCoins is spent
@@ -140,9 +155,11 @@ public:
         BOOST_FOREACH(const CTxOut &out, vout)
             if (!out.IsNull())
                 return false;
-        BOOST_FOREACH(const CTzeOut &out, tzeout)
-            if (!out.IsNull())
+
+        BOOST_FOREACH(const CTzeOutEntry& out, vtzeout)
+            if (out.second == UNSPENT)
                 return false;
+
         return true;
     }
 

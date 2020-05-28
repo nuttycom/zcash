@@ -12,8 +12,8 @@
 #include <assert.h>
 
 /**
- * If the vout at the specified position is non-null, nullify
- * it then remove nullified entries from the list of vouts.
+ * If the vout at the specified position is non-null, set
+ * it to null then remove null entries from the list of vouts.
  */
 bool CCoins::Spend(uint32_t nPos) 
 {
@@ -26,6 +26,17 @@ bool CCoins::Spend(uint32_t nPos)
 
     return true;
 }
+
+bool CCoins::SpendTzeOut(uint32_t nPos) 
+{
+    if (nPos >= vtzeout.size() || vtzeout[nPos].second == SPENT) {
+        return false;
+    } else {
+        vtzeout[nPos].second = SPENT;
+        return true;
+    }
+}
+
 
 bool CCoinsView::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const { return false; }
 bool CCoinsView::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const { return false; }
@@ -673,7 +684,7 @@ bool CCoinsViewCache::HaveCoins(const uint256 &txid) const {
     // in a reorganization (which wipes vout entirely, as opposed to spending
     // which just cleans individual outputs).
     return (it != cacheCoins.end() && 
-            !(it->second.coins.vout.empty() && it->second.coins.tzeout.empty()));
+            !(it->second.coins.vout.empty() && it->second.coins.vtzeout.empty()));
 }
 
 uint256 CCoinsViewCache::GetBestBlock() const {
@@ -882,7 +893,7 @@ const CTzeOut &CCoinsViewCache::GetTzeOutFor(const CTzeIn& input) const
 {
     const CCoins* coins = AccessCoins(input.prevout.hash);
     assert(coins && coins->IsTzeAvailable(input.prevout.n));
-    return coins->tzeout[input.prevout.n];
+    return coins->vtzeout[input.prevout.n].first;
 }
 
 CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const

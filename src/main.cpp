@@ -640,6 +640,15 @@ void static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         if (itPrev->second.empty())
             mapOrphanTransactionsByPrev.erase(itPrev);
     }
+    BOOST_FOREACH(const CTzeIn& tzein, it->second.tx.tzein)
+    {
+        map<uint256, set<uint256> >::iterator itPrev = mapOrphanTransactionsByPrev.find(tzein.prevout.hash);
+        if (itPrev == mapOrphanTransactionsByPrev.end())
+            continue;
+        itPrev->second.erase(hash);
+        if (itPrev->second.empty())
+            mapOrphanTransactionsByPrev.erase(itPrev);
+    }
     mapOrphanTransactions.erase(it);
 }
 
@@ -1169,7 +1178,7 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
     }
 
     if (!MoneyRange(nValueOut))
-        return state.DoS(100, error("CheckTransaction(): tzeout total out of range"),
+        return state.DoS(100, error("CheckTransaction(): transparent total out of range"),
                          REJECT_INVALID, "bad-txns-txouttotal-toolarge");
 
     // Check for non-zero valueBalance when there are no Sapling inputs or outputs
@@ -1440,11 +1449,13 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const TZE& tz
         COutPoint outpoint = tx.vin[i].prevout;
         if (pool.mapNextTx.count(outpoint))
         {
-            // Disable replacement feature for now
+            // Disable replacement feature for now (replace-by-fee)
             return false;
         }
     }
-    // FIXME: tzein handling?
+    // TZE FIXME: tzein handling? mapNextTx identifies outputs already spent
+    // by transactions in the mempool.
+
     BOOST_FOREACH(const JSDescription &joinsplit, tx.vJoinSplit) {
         BOOST_FOREACH(const uint256 &nf, joinsplit.nullifiers) {
             if (pool.nullifierExists(nf, SPROUT)) {
@@ -2082,8 +2093,8 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             CCoinsModifier coins = inputs.ModifyCoins(txin.prevout.hash);
             unsigned nPos = txin.prevout.n;
 
-            if (nPos >= coins->vout.size() || coins->vout[nPos].IsNull())
-                assert(false);
+            assert(nPos < coins->vout.size() && !coins->vout[nPos].IsNull());
+
             // mark an outpoint spent, and construct undo information
             txundo.vprevout.push_back(CTxInUndo(coins->vout[nPos]));
             coins->Spend(nPos);
@@ -2095,7 +2106,13 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             }
         }
 
-        // TZE: spend here? 
+        BOOST_FOREACH(const CTzeIn &tzein, tx.tzein) {
+            CCoinsModifier coins = inputs.ModifyCoins(tzein.prevout.hash);
+            unsigned nPos = tzein.prevout.n;
+            coins->SpendTzeOut(nPos);
+
+            // TZE: Do we need a repr of undo information?
+        }
     }
 
     // spend nullifiers
@@ -2178,10 +2195,11 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
         {
             const COutPoint &prevout = tx.tzein[i].prevout;
             const CCoins *pCoins = inputs.AccessCoins(prevout.hash);
-            assert(pCoins);
+            assert(pCoins && pCoins->vtzeout.size() > prevout.n);
 
-            nValueIn += pCoins->tzeout[prevout.n].nValue;
-            if (!MoneyRange(pCoins->tzeout[prevout.n].nValue) || !MoneyRange(nValueIn))
+            // should this check spentness? 
+            nValueIn += pCoins->vtzeout[prevout.n].first.nValue;
+            if (!MoneyRange(pCoins->vtzeout[prevout.n].first.nValue) || !MoneyRange(nValueIn))
                 return state.DoS(100, error("CheckInputs(): tzein amount out of range"),
                                  REJECT_INVALID, "bad-txns-inputvalues-outofrange");
         }
@@ -2292,13 +2310,13 @@ bool ContextualCheckInputs(
             for (unsigned int i = 0; i < tx.tzein.size(); i++) {
                 const COutPoint& prevout = tx.tzein[i].prevout;
                 const CCoins* pCoins = inputs.AccessCoins(prevout.hash);
-                assert(pCoins && pCoins->tzeout.size() > prevout.n);
+                assert(pCoins && pCoins->vtzeout.size() > prevout.n);
 
                 // Check that the witness has the same tze type and mode as the
                 // predicate. This might be duplicative of a check within the
                 // TZE code itself?
                 const CTzeData& witness = tx.tzein[i].witness;
-                const CTzeData& predicate = pCoins->tzeout[prevout.n].predicate;
+                const CTzeData& predicate = pCoins->vtzeout[prevout.n].first.predicate;
                 if (witness.corresponds(predicate)) {
                     // construct the context 
                     TzeContext ctx(nHeight, tx);

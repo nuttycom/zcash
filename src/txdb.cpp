@@ -312,27 +312,44 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
         boost::this_thread::interruption_point();
         std::pair<char, uint256> key;
         CCoins coins;
-        CCoinsSer cs(coins);
-        if (pcursor->GetKey(key) && key.first == DB_COINS) {
-            if (pcursor->GetValue(cs)) {
-                stats.nTransactions++;
-                for (unsigned int i=0; i<cs.coins.vout.size(); i++) {
-                    const CTxOut &out = cs.coins.vout[i];
-                    if (!out.IsNull()) {
-                        stats.nTransactionOutputs++;
-                        ss << VARINT(i+1);
-                        ss << out;
-                        nTotalAmount += out.nValue;
+        if (pcursor->GetKey(key)) {
+            if (key.first == DB_COINS) {
+                CCoinsSer cs(coins);
+                if (pcursor->GetValue(cs)) {
+                    stats.nTransactions++;
+                    for (unsigned int i=0; i<cs.coins.vout.size(); i++) {
+                        const CTxOut &out = cs.coins.vout[i];
+                        if (!out.IsNull()) {
+                            stats.nTransactionOutputs++;
+                            ss << VARINT(i+1);
+                            ss << out;
+                            nTotalAmount += out.nValue;
+                        }
                     }
+                    stats.nSerializedSize += 32 + pcursor->GetValueSize();
+                    ss << VARINT(0);
+                } else {
+                    return error("CCoinsViewDB::GetStats() : unable to read value");
                 }
-                stats.nSerializedSize += 32 + pcursor->GetValueSize();
-                ss << VARINT(0);
-            } else {
-                return error("CCoinsViewDB::GetStats() : unable to read value");
+            } else if (key.first == DB_TZE_COINS) {
+                CTzeCoinsSer cs(coins);
+                if (pcursor->GetValue(cs)) {
+                    for (unsigned int i=0; i<cs.coins.vtzeout.size(); i++) {
+                        const std::pair<CTzeOut, Spentness> &out = cs.coins.vtzeout[i];
+                        if (out.second == UNSPENT) {
+                            stats.nTransactionOutputs++;
+                            ss << VARINT(i+1);
+                            ss << out.first;
+                            nTotalAmount += out.first.nValue;
+                        }
+                    }
+                    stats.nSerializedSize += 32 + pcursor->GetValueSize(); 
+                    ss << VARINT(0); //TODO: what is this for?
+                } else {
+                    return error("CCoinsViewDB::GetStats() : unable to read value");
+                }
             }
-        } else {
-            break;
-        }
+        } 
         pcursor->Next();
     }
     {
