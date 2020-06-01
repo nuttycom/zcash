@@ -209,7 +209,7 @@ std::string CTzeOut::ToString() const
     
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::SPROUT_MIN_CURRENT_VERSION), fOverwintered(false), nVersionGroupId(0), nExpiryHeight(0), nLockTime(0), valueBalance(0) {}
 CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId), nExpiryHeight(tx.nExpiryHeight),
-                                                                   vin(tx.vin), vout(tx.vout), tzein(tx.tzein), tzeout(tx.tzeout), nLockTime(tx.nLockTime),
+                                                                   vin(tx.vin), vout(tx.vout), vtzein(tx.vtzein), vtzeout(tx.vtzeout), nLockTime(tx.nLockTime),
                                                                    valueBalance(tx.valueBalance), vShieldedSpend(tx.vShieldedSpend), vShieldedOutput(tx.vShieldedOutput),
                                                                    vJoinSplit(tx.vJoinSplit), joinSplitPubKey(tx.joinSplitPubKey), joinSplitSig(tx.joinSplitSig),
                                                                    bindingSig(tx.bindingSig)
@@ -227,13 +227,13 @@ void CTransaction::UpdateHash() const
 }
 
 CTransaction::CTransaction() : nVersion(CTransaction::SPROUT_MIN_CURRENT_VERSION), fOverwintered(false), nVersionGroupId(0), nExpiryHeight(0), 
-                               vin(), vout(), tzein(), tzeout(), nLockTime(0), 
+                               vin(), vout(), vtzein(), vtzeout(), nLockTime(0), 
                                valueBalance(0), vShieldedSpend(), vShieldedOutput(), 
                                vJoinSplit(), joinSplitPubKey(), joinSplitSig(), 
                                bindingSig() { }
 
 CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId), nExpiryHeight(tx.nExpiryHeight),
-                                                            vin(tx.vin), vout(tx.vout), tzein(tx.tzein), tzeout(tx.tzeout), nLockTime(tx.nLockTime),
+                                                            vin(tx.vin), vout(tx.vout), vtzein(tx.vtzein), vtzeout(tx.vtzeout), nLockTime(tx.nLockTime),
                                                             valueBalance(tx.valueBalance), vShieldedSpend(tx.vShieldedSpend), vShieldedOutput(tx.vShieldedOutput),
                                                             vJoinSplit(tx.vJoinSplit), joinSplitPubKey(tx.joinSplitPubKey), joinSplitSig(tx.joinSplitSig),
                                                             bindingSig(tx.bindingSig)
@@ -246,7 +246,7 @@ CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion
 CTransaction::CTransaction(
     const CMutableTransaction &tx,
     bool evilDeveloperFlag) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId), nExpiryHeight(tx.nExpiryHeight),
-                              vin(tx.vin), vout(tx.vout), tzein(tx.tzein), tzeout(tx.tzeout), nLockTime(tx.nLockTime),
+                              vin(tx.vin), vout(tx.vout), vtzein(tx.vtzein), vtzeout(tx.vtzeout), nLockTime(tx.nLockTime),
                               valueBalance(tx.valueBalance), vShieldedSpend(tx.vShieldedSpend), vShieldedOutput(tx.vShieldedOutput),
                               vJoinSplit(tx.vJoinSplit), joinSplitPubKey(tx.joinSplitPubKey), joinSplitSig(tx.joinSplitSig),
                               bindingSig(tx.bindingSig)
@@ -255,7 +255,7 @@ CTransaction::CTransaction(
 }
 
 CTransaction::CTransaction(CMutableTransaction &&tx) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId),
-                                                       vin(std::move(tx.vin)), vout(std::move(tx.vout)), tzein(std::move(tx.tzein)), tzeout(std::move(tx.tzeout)),
+                                                       vin(std::move(tx.vin)), vout(std::move(tx.vout)), vtzein(std::move(tx.vtzein)), vtzeout(std::move(tx.vtzeout)),
                                                        nLockTime(tx.nLockTime), nExpiryHeight(tx.nExpiryHeight),
                                                        valueBalance(tx.valueBalance),
                                                        vShieldedSpend(std::move(tx.vShieldedSpend)), vShieldedOutput(std::move(tx.vShieldedOutput)),
@@ -294,7 +294,7 @@ CAmount CTransaction::GetValueOut() const
             throw std::runtime_error("CTransaction::GetValueOut(): value out of range");
     }
 
-    for (std::vector<CTzeOut>::const_iterator it(tzeout.begin()); it != tzeout.end(); ++it)
+    for (std::vector<CTzeOut>::const_iterator it(vtzeout.begin()); it != vtzeout.end(); ++it)
     {
         nValueOut += it->nValue;
         if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
@@ -396,15 +396,15 @@ std::string CTransaction::ToString() const
             vShieldedSpend.size(),
             vShieldedOutput.size());
     } else if (nVersion >= 3) {
-        str += strprintf("CTransaction(hash=%s, ver=%d, fOverwintered=%d, nVersionGroupId=%08x, vin.size=%u, tzein.size=%u, vout.size=%u, tzeout.size=%u, nLockTime=%u, nExpiryHeight=%u)\n",
+        str += strprintf("CTransaction(hash=%s, ver=%d, fOverwintered=%d, nVersionGroupId=%08x, vin.size=%u, vtzein.size=%u, vout.size=%u, vtzeout.size=%u, nLockTime=%u, nExpiryHeight=%u)\n",
             GetHash().ToString().substr(0,10),
             nVersion,
             fOverwintered,
             nVersionGroupId,
             vin.size(),
-            tzein.size(),
+            vtzein.size(),
             vout.size(),
-            tzeout.size(),
+            vtzeout.size(),
             nLockTime,
             nExpiryHeight);
     }
@@ -412,9 +412,9 @@ std::string CTransaction::ToString() const
         str += "    " + vin[i].ToString() + "\n";
     for (unsigned int i = 0; i < vout.size(); i++)
         str += "    " + vout[i].ToString() + "\n";
-    for (unsigned int i = 0; i < tzein.size(); i++)
-        str += "    " + tzein[i].ToString() + "\n";
-    for (unsigned int i = 0; i < tzeout.size(); i++)
-        str += "    " + tzeout[i].ToString() + "\n";
+    for (unsigned int i = 0; i < vtzein.size(); i++)
+        str += "    " + vtzein[i].ToString() + "\n";
+    for (unsigned int i = 0; i < vtzeout.size(); i++)
+        str += "    " + vtzeout[i].ToString() + "\n";
     return str;
 }

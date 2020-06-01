@@ -52,8 +52,8 @@ public:
     void FromTx(const CTransaction &tx, int nHeightIn) {
         fCoinBase = tx.IsCoinBase();
         vout = tx.vout;
-        for (uint32_t i = 0; i < tx.tzeout.size(); i++ ) {
-            vtzeout.push_back(std::make_pair(tx.tzeout[i], UNSPENT));
+        for (uint32_t i = 0; i < tx.vtzeout.size(); i++ ) {
+            vtzeout.push_back(std::make_pair(tx.vtzeout[i], UNSPENT));
         }
         nHeight = nHeightIn;
         nVersion = tx.nVersion;
@@ -77,7 +77,7 @@ public:
     CCoins() : fCoinBase(false), vout(0), vtzeout(), nHeight(0), nVersion(0) { }
 
     /**
-     * Remove spent outputs at the end of vout & tzeout.
+     * Remove spent outputs at the end of vout & vtzeout.
      *
      * This is principally useful in relation to the serialized form; it should
      * likely be removed from the interface in favor of the serialization code

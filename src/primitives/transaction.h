@@ -699,8 +699,8 @@ public:
     const uint32_t nVersionGroupId;
     const std::vector<CTxIn> vin;
     const std::vector<CTxOut> vout;
-    const std::vector<CTzeIn> tzein;
-    const std::vector<CTzeOut> tzeout;
+    const std::vector<CTzeIn> vtzein;
+    const std::vector<CTzeOut> vtzeout;
     const uint32_t nLockTime;
     const uint32_t nExpiryHeight;
     const CAmount valueBalance;
@@ -757,8 +757,8 @@ public:
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
         READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
         if (isNu4V5) {
-            READWRITE(*const_cast<std::vector<CTzeIn>*>(&tzein));
-            READWRITE(*const_cast<std::vector<CTzeOut>*>(&tzeout));
+            READWRITE(*const_cast<std::vector<CTzeIn>*>(&vtzein));
+            READWRITE(*const_cast<std::vector<CTzeOut>*>(&vtzeout));
         }
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
         if (isOverwinterV3 || isSaplingV4 || isNu4V5) {
@@ -857,8 +857,8 @@ struct CMutableTransaction
     uint32_t nVersionGroupId;
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
-    std::vector<CTzeIn> tzein;
-    std::vector<CTzeOut> tzeout;
+    std::vector<CTzeIn> vtzein;
+    std::vector<CTzeOut> vtzeout;
     uint32_t nLockTime;
     uint32_t nExpiryHeight;
     CAmount valueBalance;
@@ -914,8 +914,8 @@ struct CMutableTransaction
         READWRITE(vin);
         READWRITE(vout);
         if (isNu4V5) {
-            READWRITE(tzein);
-            READWRITE(tzeout);
+            READWRITE(vtzein);
+            READWRITE(vtzeout);
         }
         READWRITE(nLockTime);
         if (isOverwinterV3 || isSaplingV4 || isNu4V5) {

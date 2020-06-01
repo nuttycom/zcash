@@ -119,7 +119,7 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const CChainParam
         }
     }
 
-    if (tx.tzeout.size() > 0) {
+    if (tx.vtzeout.size() > 0) {
         return false;
     }
 

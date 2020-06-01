@@ -318,7 +318,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
             }
 
             // Add TZE input value
-            BOOST_FOREACH(const CTzeIn& tzein, tx.tzein)
+            BOOST_FOREACH(const CTzeIn& tzein, tx.vtzein)
             {
                 // Read prev transaction
                 if (!view.HaveCoins(tzein.prevout.hash))
@@ -345,7 +345,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
                     }
                     mapDependers[tzein.prevout.hash].push_back(porphan);
                     porphan->setDependsOn.insert(tzein.prevout.hash);
-                    nTotalIn += mempool.mapTx.find(tzein.prevout.hash)->GetTx().tzeout[tzein.prevout.n].nValue;
+                    nTotalIn += mempool.mapTx.find(tzein.prevout.hash)->GetTx().vtzeout[tzein.prevout.n].nValue;
                     continue;
                 }
 

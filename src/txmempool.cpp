@@ -267,6 +267,13 @@ void CTxMemPool::remove(const CTransaction &origTx, std::list<CTransaction>& rem
                         continue;
                     txToRemove.push_back(it->second.ptx->GetHash());
                 }
+
+                for (unsigned int i = 0; i < tx.vtzeout.size(); i++) {
+                    std::map<COutPoint, CInPoint>::iterator it = mapNextTx.find(COutPoint(hash, i));
+                    if (it == mapNextTx.end())
+                        continue;
+                    txToRemove.push_back(it->second.ptx->GetHash());
+                }
             }
             mapRecentlyAddedTx.erase(hash);
             BOOST_FOREACH(const CTxIn& txin, tx.vin)
@@ -506,11 +513,11 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
     LOCK(cs);
     list<const CTxMemPoolEntry*> waitingOnDependants;
     for (indexed_transaction_set::const_iterator it = mapTx.begin(); it != mapTx.end(); it++) {
-        unsigned int i = 0;
         checkTotal += it->GetTxSize();
         innerUsage += it->DynamicMemoryUsage();
         const CTransaction& tx = it->GetTx();
         bool fDependsWait = false;
+        unsigned int txi = 0;
         BOOST_FOREACH(const CTxIn &txin, tx.vin) {
             // Check that every mempool transaction's inputs refer to available coins, or other mempool tx's.
             indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
@@ -526,8 +533,28 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
             std::map<COutPoint, CInPoint>::const_iterator it3 = mapNextTx.find(txin.prevout);
             assert(it3 != mapNextTx.end());
             assert(it3->second.ptx == &tx);
-            assert(it3->second.n == i);
-            i++;
+            assert(it3->second.n == txi);
+            txi++;
+        }
+
+        unsigned int tzi = 0;
+        BOOST_FOREACH(const CTzeIn &tzein, tx.vtzein) {
+            // Check that every mempool transaction's inputs refer to available coins, or other mempool tx's.
+            indexed_transaction_set::const_iterator it2 = mapTx.find(tzein.prevout.hash);
+            if (it2 != mapTx.end()) {
+                const CTransaction& tx2 = it2->GetTx();
+                assert(tx2.vtzeout.size() > tzein.prevout.n); // no way to check for unspentness here
+                fDependsWait = true;
+            } else {
+                const CCoins* coins = pcoins->AccessCoins(tzein.prevout.hash);
+                assert(coins && coins->IsTzeAvailable(tzein.prevout.n));
+            }
+            // Check whether its inputs are marked in mapNextTx.
+            std::map<COutPoint, CInPoint>::const_iterator it3 = mapNextTx.find(tzein.prevout);
+            assert(it3 != mapNextTx.end());
+            assert(it3->second.ptx == &tx);
+            assert(it3->second.n == tzi);
+            tzi++;
         }
 
         boost::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;

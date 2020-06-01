@@ -618,7 +618,7 @@ bool AddOrphanTx(const CTransaction& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(c
     BOOST_FOREACH(const CTxIn& txin, tx.vin)
         mapOrphanTransactionsByPrev[txin.prevout.hash].insert(hash);
 
-    BOOST_FOREACH(const CTzeIn& tzein, tx.tzein)
+    BOOST_FOREACH(const CTzeIn& tzein, tx.vtzein)
         mapOrphanTransactionsByPrev[tzein.prevout.hash].insert(hash);
 
     LogPrint("mempool", "stored orphan tx %s (mapsz %u prevsz %u)\n", hash.ToString(),
@@ -640,7 +640,7 @@ void static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         if (itPrev->second.empty())
             mapOrphanTransactionsByPrev.erase(itPrev);
     }
-    BOOST_FOREACH(const CTzeIn& tzein, it->second.tx.tzein)
+    BOOST_FOREACH(const CTzeIn& tzein, it->second.tx.vtzein)
     {
         map<uint256, set<uint256> >::iterator itPrev = mapOrphanTransactionsByPrev.find(tzein.prevout.hash);
         if (itPrev == mapOrphanTransactionsByPrev.end())
@@ -1136,12 +1136,12 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
 
     // Transactions containing empty `vin` must have either non-empty
     // `vJoinSplit` or non-empty `vShieldedSpend` or non-empty `tzein`.
-    if (tx.vin.empty() && tx.vJoinSplit.empty() && tx.vShieldedSpend.empty() && tx.tzein.empty())
+    if (tx.vin.empty() && tx.vJoinSplit.empty() && tx.vShieldedSpend.empty() && tx.vtzein.empty())
         return state.DoS(10, error("CheckTransaction(): vin empty"),
                          REJECT_INVALID, "bad-txns-vin-empty");
     // Transactions containing empty `vout` must have either non-empty
     // `vJoinSplit` or non-empty `vShieldedOutput` or non-empty `tzeout`.
-    if (tx.vout.empty() && tx.vJoinSplit.empty() && tx.vShieldedOutput.empty() && tx.tzeout.empty())
+    if (tx.vout.empty() && tx.vJoinSplit.empty() && tx.vShieldedOutput.empty() && tx.vtzeout.empty())
         return state.DoS(10, error("CheckTransaction(): vout empty"),
                          REJECT_INVALID, "bad-txns-vout-empty");
 
@@ -1166,7 +1166,7 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
     }
 
     // Check for negative or overflow TZE output values
-    BOOST_FOREACH(const CTzeOut& tzeout, tx.tzeout)
+    BOOST_FOREACH(const CTzeOut& tzeout, tx.vtzeout)
     {
         if (tzeout.nValue < 0)
             return state.DoS(100, error("CheckTransaction(): tzeout.nValue negative"),
@@ -1280,7 +1280,7 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
 
     // Check for duplicate TZE inputs
     set<COutPoint> vTzeInOutPoints;
-    BOOST_FOREACH(const CTzeIn& tzein, tx.tzein)
+    BOOST_FOREACH(const CTzeIn& tzein, tx.vtzein)
     {
         if (vTzeInOutPoints.count(tzein.prevout))
             return state.DoS(100, error("CheckTransaction(): duplicate TZE inputs"),
@@ -1331,7 +1331,7 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
         // See ContextualCheckTransaction for consensus rules on coinbase output descriptions.
 
         // A coinbase transaction cannot have TZE inputs
-        if (tx.tzein.size() > 0)
+        if (tx.vtzein.size() > 0)
             return state.DoS(100, error("CheckTransaction(): coinbase has TZE inputs"),
                              REJECT_INVALID, "bad-cb-has-tze-inputs");
 
@@ -1346,7 +1346,7 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
                 return state.DoS(10, error("CheckTransaction(): transparent input prevout is null"),
                                  REJECT_INVALID, "bad-txns-prevout-null");
 
-        BOOST_FOREACH(const CTzeIn& tzein, tx.tzein)
+        BOOST_FOREACH(const CTzeIn& tzein, tx.vtzein)
             if (tzein.prevout.IsNull())
                 return state.DoS(10, error("CheckTransaction(): TZE input prevout is null"),
                                  REJECT_INVALID, "bad-txns-prevout-null");
@@ -1496,7 +1496,7 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState &state, const TZE& tz
             }
         }
 
-        BOOST_FOREACH(const CTzeIn tzein, tx.tzein) {
+        BOOST_FOREACH(const CTzeIn tzein, tx.vtzein) {
             if (!view.HaveCoins(tzein.prevout.hash)) {
                 if (pfMissingInputs)
                     *pfMissingInputs = true;
@@ -2106,7 +2106,7 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             }
         }
 
-        BOOST_FOREACH(const CTzeIn &tzein, tx.tzein) {
+        BOOST_FOREACH(const CTzeIn &tzein, tx.vtzein) {
             CCoinsModifier coins = inputs.ModifyCoins(tzein.prevout.hash);
             unsigned nPos = tzein.prevout.n;
             coins->SpendTzeOut(nPos);
@@ -2191,9 +2191,9 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
         }
 
         // nValueIn for a transaction must include TZE inputs.
-        for (unsigned int i = 0; i < tx.tzein.size(); i++)
+        for (unsigned int i = 0; i < tx.vtzein.size(); i++)
         {
-            const COutPoint &prevout = tx.tzein[i].prevout;
+            const COutPoint &prevout = tx.vtzein[i].prevout;
             const CCoins *pCoins = inputs.AccessCoins(prevout.hash);
             assert(pCoins && pCoins->vtzeout.size() > prevout.n);
 
@@ -2307,15 +2307,15 @@ bool ContextualCheckInputs(
 
             // for each TZE input, look up the associated prior TZE output, and pass both
             // to the extension checker.
-            for (unsigned int i = 0; i < tx.tzein.size(); i++) {
-                const COutPoint& prevout = tx.tzein[i].prevout;
+            for (unsigned int i = 0; i < tx.vtzein.size(); i++) {
+                const COutPoint& prevout = tx.vtzein[i].prevout;
                 const CCoins* pCoins = inputs.AccessCoins(prevout.hash);
                 assert(pCoins && pCoins->vtzeout.size() > prevout.n);
 
                 // Check that the witness has the same tze type and mode as the
                 // predicate. This might be duplicative of a check within the
                 // TZE code itself?
-                const CTzeData& witness = tx.tzein[i].witness;
+                const CTzeData& witness = tx.vtzein[i].witness;
                 const CTzeData& predicate = pCoins->vtzeout[prevout.n].first.predicate;
                 if (witness.corresponds(predicate)) {
                     // construct the context 
