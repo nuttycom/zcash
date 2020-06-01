@@ -318,6 +318,15 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
                             nTotalAmount += out.nValue;
                         }
                     }
+                    for (unsigned int i=0; i<cs.coins.vtzeout.size(); i++) {
+                        const std::pair<CTzeOut, Spentness>& out = cs.coins.vtzeout[i];
+                        if (out.second == UNSPENT) {
+                            stats.nTransactionOutputs++;
+                            ss << VARINT(i+1);
+                            ss << out.first;
+                            nTotalAmount += out.first.nValue;
+                        }
+                    }
                     stats.nSerializedSize += 32 + pcursor->GetValueSize();
                     ss << VARINT(0);
                 } else {
