@@ -303,7 +303,7 @@ public:
         }
         // tzeout
         if (coins.nVersion >= NU5_TX_VERSION ) {
-            auto tzeoutSpent = [](const CCoins::TzeOutEntry& elem) { return elem.second == SPENT; };
+            auto tzeoutSpent = [](const CCoins::TzeOutCoin& elem) { return elem.second == SPENT; };
 
             unsigned int nTzeMaskSize = 0, nTzeMaskCode = 0;
             CalcMaskSize(coins.vtzeout, tzeoutSpent, nTzeMaskSize, nTzeMaskCode);

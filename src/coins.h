@@ -39,8 +39,8 @@ public:
     std::vector<CTxOut> vout;
 
     //! unconsumed transparent extension outputs
-    typedef std::pair<CTzeOut, Spentness> TzeOutEntry;
-    std::vector<TzeOutEntry> vtzeout;
+    typedef std::pair<CTzeOut, Spentness> TzeOutCoin;
+    std::vector<TzeOutCoin> vtzeout;
 
     //! at which height this transaction was included in the active block chain
     int nHeight;
@@ -68,7 +68,7 @@ public:
     void Clear() {
         fCoinBase = false;
         std::vector<CTxOut>().swap(vout);
-        std::vector<TzeOutEntry>().swap(vtzeout);
+        std::vector<TzeOutCoin>().swap(vtzeout);
         nHeight = 0;
         nVersion = 0;
     }
@@ -92,7 +92,7 @@ public:
         while (vtzeout.size() > 0 && vtzeout.back().second == SPENT)
             vtzeout.pop_back();
         if (vtzeout.empty())
-            std::vector<TzeOutEntry>().swap(vtzeout);
+            std::vector<TzeOutCoin>().swap(vtzeout);
     }
 
     void ClearUnspendable() {
@@ -156,7 +156,7 @@ public:
             if (!out.IsNull())
                 return false;
 
-        BOOST_FOREACH(const TzeOutEntry& out, vtzeout)
+        BOOST_FOREACH(const TzeOutCoin& out, vtzeout)
             if (out.second == UNSPENT)
                 return false;
 

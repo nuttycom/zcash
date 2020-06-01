@@ -319,7 +319,7 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
                         }
                     }
                     for (unsigned int i=0; i<cs.coins.vtzeout.size(); i++) {
-                        const std::pair<CTzeOut, Spentness>& out = cs.coins.vtzeout[i];
+                        const CCoins::TzeOutCoin& out = cs.coins.vtzeout[i];
                         if (out.second == UNSPENT) {
                             stats.nTransactionOutputs++;
                             ss << VARINT(i+1);
