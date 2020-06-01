@@ -152,6 +152,9 @@ public:
  * - VARINT(nCode)
  * - unspentness bitvector, for vout[2] and further; least significant byte first
  * - the non-spent CTxOuts (via CTxOutCompressor)
+ * - VARINT(nTzeCode)
+ * - unspentness bitvector, for vtzeout[2] and further; least significant byte first
+ * - the non-spent CTzeOuts (via CTzeOutSer)
  * - VARINT(nHeight)
  *
  * The nCode value consists of:
@@ -204,12 +207,14 @@ private:
      * each bit in the bitmask represents the availability of one output, but the
      * availabilities of the first two outputs are encoded separately.
      */
-    void CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const {
+    template<typename Elem, typename Pred>
+    static void CalcMaskSize(const std::vector<Elem>& v, const Pred isSpent, unsigned int &nBytes, unsigned int &nNonzeroBytes) {
         unsigned int nLastUsedByte = 0;
-        for (unsigned int b = 0; 2+b*8 < coins.vout.size(); b++) {
+        for (unsigned int b = 0; 2+b*8 < v.size(); b++) {
+            // for each vout/vtzeout entry beyond the 
             bool fZero = true;
-            for (unsigned int i = 0; i < 8 && 2+b*8+i < coins.vout.size(); i++) {
-                if (!coins.vout[2+b*8+i].IsNull()) {
+            for (unsigned int i = 0; i < 8 && 2+b*8+i < v.size(); i++) {
+                if (!isSpent(v[2+b*8+i])) {
                     fZero = false;
                     continue;
                 }
@@ -223,6 +228,54 @@ private:
         nBytes += nLastUsedByte;
     }
 
+    template<typename Elem, typename Pred>
+    static unsigned int SerCode(const std::vector<Elem>& v, const Pred isSpent, bool fCoinBase, unsigned int nMaskCode) {
+        bool fFirst = v.size() > 0 && !isSpent(v[0]);
+        bool fSecond = v.size() > 1 && !isSpent(v[1]);
+        assert(fFirst || fSecond || nMaskCode);
+
+        return 8*(nMaskCode - (fFirst || fSecond ? 0 : 1)) + 
+               (fCoinBase ? 1 : 0) + 
+               (fFirst ? 2 : 0) + 
+               (fSecond ? 4 : 0);
+    }
+
+    template<typename Stream, typename Elem, typename Pred>
+    static void WriteMask(Stream& s, const std::vector<Elem>& v, const Pred isSpent, const int nMaskSize) {
+        for (unsigned int b = 0; b<nMaskSize; b++) {
+            // Serialize a series of bytes, each of which indicates the
+            // spent-ness of 8 elements of the vout/vtzeout vector. The 
+            // first two elements of the vector are treated specially and ignored.
+            unsigned char chAvail = 0;
+            for (unsigned int i = 0; i < 8 && 2+b*8+i < v.size(); i++)
+                if (!isSpent(v[2+b*8+i]))
+                    chAvail |= (1 << i);
+            ::Serialize(s, chAvail);
+        }
+    }
+
+    template<typename Stream>
+    static std::vector<bool> ReadMask(Stream& s, const unsigned int nCode) {
+        std::vector<bool> vAvail(2, false);
+        vAvail[0] = (nCode & 2) != 0;
+        vAvail[1] = (nCode & 4) != 0;
+        unsigned int nMaskCode = (nCode / 8) + ((nCode & 6) != 0 ? 0 : 1);
+
+        // spentness bitmask
+        while (nMaskCode > 0) {
+            unsigned char chAvail = 0;
+            ::Unserialize(s, chAvail);
+            for (unsigned int p = 0; p < 8; p++) {
+                bool f = (chAvail & (1 << p)) != 0;
+                vAvail.push_back(f);
+            }
+            if (chAvail != 0)
+                nMaskCode--;
+        }
+
+        return vAvail;
+    }
+
 public:
     CCoins& coins;
 
@@ -230,28 +283,39 @@ public:
 
     template<typename Stream>
     void Serialize(Stream &s) const {
+        auto txoutSpent = [](const CTxOut& elem) { return !elem.IsNull(); };
+
         unsigned int nMaskSize = 0, nMaskCode = 0;
-        CalcMaskSize(nMaskSize, nMaskCode);
-        bool fFirst = coins.vout.size() > 0 && !coins.vout[0].IsNull();
-        bool fSecond = coins.vout.size() > 1 && !coins.vout[1].IsNull();
-        assert(fFirst || fSecond || nMaskCode);
-        unsigned int nCode = 8*(nMaskCode - (fFirst || fSecond ? 0 : 1)) + (coins.fCoinBase ? 1 : 0) + (fFirst ? 2 : 0) + (fSecond ? 4 : 0);
+        CalcMaskSize(coins.vout, txoutSpent, nMaskSize, nMaskCode);
+        unsigned int nCode = SerCode(coins.vout, txoutSpent, coins.fCoinBase, nMaskSize);
+
         // version
         ::Serialize(s, VARINT(coins.nVersion));
         // header code
         ::Serialize(s, VARINT(nCode));
         // spentness bitmask
-        for (unsigned int b = 0; b<nMaskSize; b++) {
-            unsigned char chAvail = 0;
-            for (unsigned int i = 0; i < 8 && 2+b*8+i < coins.vout.size(); i++)
-                if (!coins.vout[2+b*8+i].IsNull())
-                    chAvail |= (1 << i);
-            ::Serialize(s, chAvail);
-        }
+        WriteMask(s, coins.vout, txoutSpent, nMaskSize);
         // txouts themself
         for (unsigned int i = 0; i < coins.vout.size(); i++) {
+            // only unspent txos are written out
             if (!coins.vout[i].IsNull())
                 ::Serialize(s, CTxOutCompressor(REF(coins.vout[i])));
+        }
+        // tzeout
+        if (coins.nVersion >= NU5_TX_VERSION ) {
+            auto tzeoutSpent = [](const CCoins::TzeOutEntry& elem) { return elem.second == SPENT; };
+
+            unsigned int nTzeMaskSize = 0, nTzeMaskCode = 0;
+            CalcMaskSize(coins.vtzeout, tzeoutSpent, nTzeMaskSize, nTzeMaskCode);
+            unsigned int nTzeCode = SerCode(coins.vtzeout, tzeoutSpent, coins.fCoinBase, nTzeMaskSize);
+
+            // write header code, mask, then the actual unspent coins
+            ::Serialize(s, VARINT(nTzeCode));
+            WriteMask(s, coins.vtzeout, tzeoutSpent, nTzeMaskSize);
+            for (unsigned int i = 0; i < coins.vtzeout.size(); i++) {
+                if (coins.vtzeout[i].second == UNSPENT)
+                    ::Serialize(s, CTzeOutSer(REF(coins.vtzeout[i].first)));
+            }
         }
         // coinbase height
         ::Serialize(s, VARINT(coins.nHeight));
@@ -266,51 +330,32 @@ public:
         unsigned int nCode = 0;
         ::Unserialize(s, VARINT(nCode));
         coins.fCoinBase = nCode & 1;
-        std::vector<bool> vAvail(2, false);
-        vAvail[0] = (nCode & 2) != 0;
-        vAvail[1] = (nCode & 4) != 0;
-        unsigned int nMaskCode = (nCode / 8) + ((nCode & 6) != 0 ? 0 : 1);
-        // spentness bitmask
-        while (nMaskCode > 0) {
-            unsigned char chAvail = 0;
-            ::Unserialize(s, chAvail);
-            for (unsigned int p = 0; p < 8; p++) {
-                bool f = (chAvail & (1 << p)) != 0;
-                vAvail.push_back(f);
-            }
-            if (chAvail != 0)
-                nMaskCode--;
-        }
+
+        auto vAvail = ReadMask(s, nCode);
         // txouts themself
         coins.vout.assign(vAvail.size(), CTxOut());
         for (unsigned int i = 0; i < vAvail.size(); i++) {
             if (vAvail[i])
                 ::Unserialize(s, REF(CTxOutCompressor(coins.vout[i])));
         }
+        // tzeout
+        if (coins.nVersion >= NU5_TX_VERSION ) {
+            unsigned int nTzeCode = 0;
+            ::Unserialize(s, VARINT(nTzeCode));
+
+            auto vTzeAvail = ReadMask(s, nTzeCode);
+
+            coins.vtzeout.assign(vAvail.size(), std::make_pair(CTzeOut(), SPENT));
+            for (unsigned int i = 0; i < vAvail.size(); i++) {
+                if (vAvail[i]) {
+                    ::Unserialize(s, REF(CTzeOutSer(coins.vtzeout[i].first)));
+                    coins.vtzeout[i].second = UNSPENT;
+                }
+            }
+        }
         // coinbase height
         ::Unserialize(s, VARINT(coins.nHeight));
         coins.Cleanup();
-    }
-};
-
-/**
- * TXDB serialization for ccoins tzeout entries. 
- */
-class CTzeCoinsSer 
-{
-public:
-    CCoins& coins;
-
-    CTzeCoinsSer(CCoins& coinsIn): coins(coinsIn) { }
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        for (unsigned int i = 0; i < coins.vtzeout.size(); i++) {
-            if (!coins.vtzeout[i].second)
-                ::Serialize(s, CTzeOutSer(REF(coins.vtzeout[i].first)));
-        }
     }
 };
 

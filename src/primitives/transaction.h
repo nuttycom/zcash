@@ -45,6 +45,13 @@ static_assert(NU4_TX_VERSION >= NU4_MIN_TX_VERSION,
 static_assert(NU4_TX_VERSION <= NU4_MAX_TX_VERSION,
     "Nu4 tx version must not be higher than maximum");
 
+// Nu5 transaction version
+static const int32_t NU5_TX_VERSION = 5;
+static_assert(NU5_TX_VERSION >= NU5_MIN_TX_VERSION,
+    "Nu5 tx version must not be lower than minimum");
+static_assert(NU5_TX_VERSION <= NU5_MAX_TX_VERSION,
+    "Nu5 tx version must not be higher than maximum");
+
 
 // These constants are defined in the protocol § 7.1:
 // https://zips.z.cash/protocol/protocol.pdf#txnencoding

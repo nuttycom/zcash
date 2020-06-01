@@ -25,7 +25,6 @@ static const char DB_SAPLING_ANCHOR = 'Z';
 static const char DB_NULLIFIER = 's';
 static const char DB_SAPLING_NULLIFIER = 'S';
 static const char DB_COINS = 'c';
-static const char DB_TZE_COINS = 'C';
 static const char DB_BLOCK_FILES = 'f';
 static const char DB_TXINDEX = 't';
 static const char DB_BLOCK_INDEX = 'b';
@@ -99,12 +98,7 @@ bool CCoinsViewDB::GetNullifier(const uint256 &nf, ShieldedType type) const {
 
 bool CCoinsViewDB::GetCoins(const uint256 &txid, CCoins &coins) const {
     CCoinsSer cs(coins);
-    bool coinsRead = db.Read(make_pair(DB_COINS, txid), cs);
-
-    CTzeCoinsSer tcs(coins);
-    bool tzeRead = db.Read(make_pair(DB_TZE_COINS, txid), tcs);
-
-    return coinsRead && tzeRead;
+    return db.Read(make_pair(DB_COINS, txid), cs);
 }
 
 bool CCoinsViewDB::HaveCoins(const uint256 &txid) const {
@@ -243,10 +237,8 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins,
         if (it->second.flags & CCoinsCacheEntry::DIRTY) {
             if (it->second.coins.IsPruned()) {
                 batch.Erase(make_pair(DB_COINS, it->first));
-                batch.Erase(make_pair(DB_TZE_COINS, it->first));
             } else {
                 batch.Write(make_pair(DB_COINS, it->first), CCoinsSer(it->second.coins));
-                batch.Write(make_pair(DB_TZE_COINS, it->first), CTzeCoinsSer(it->second.coins));
             }
             changed++;
         }
@@ -331,24 +323,7 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
                 } else {
                     return error("CCoinsViewDB::GetStats() : unable to read value");
                 }
-            } else if (key.first == DB_TZE_COINS) {
-                CTzeCoinsSer cs(coins);
-                if (pcursor->GetValue(cs)) {
-                    for (unsigned int i=0; i<cs.coins.vtzeout.size(); i++) {
-                        const std::pair<CTzeOut, Spentness> &out = cs.coins.vtzeout[i];
-                        if (out.second == UNSPENT) {
-                            stats.nTransactionOutputs++;
-                            ss << VARINT(i+1);
-                            ss << out.first;
-                            nTotalAmount += out.first.nValue;
-                        }
-                    }
-                    stats.nSerializedSize += 32 + pcursor->GetValueSize(); 
-                    ss << VARINT(0); //TODO: what is this for?
-                } else {
-                    return error("CCoinsViewDB::GetStats() : unable to read value");
-                }
-            }
+            }         
         } 
         pcursor->Next();
     }

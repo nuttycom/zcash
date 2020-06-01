@@ -25,7 +25,7 @@ enum Spentness {
     SPENT
 };
 
-/** 
+/**
  * Pruned version of CTransaction: only retains metadata and unspent transaction outputs
  */
 class CCoins
@@ -38,9 +38,9 @@ public:
     //! unspent transaction outputs; spent outputs are .IsNull(); spent outputs at the end of the array are dropped
     std::vector<CTxOut> vout;
 
-    //! unconsumed transparent extension outputs 
-    typedef std::pair<CTzeOut, Spentness> CTzeOutEntry;
-    std::vector<CTzeOutEntry> vtzeout;
+    //! unconsumed transparent extension outputs
+    typedef std::pair<CTzeOut, Spentness> TzeOutEntry;
+    std::vector<TzeOutEntry> vtzeout;
 
     //! at which height this transaction was included in the active block chain
     int nHeight;
@@ -68,7 +68,7 @@ public:
     void Clear() {
         fCoinBase = false;
         std::vector<CTxOut>().swap(vout);
-        std::vector<CTzeOutEntry>().swap(vtzeout);
+        std::vector<TzeOutEntry>().swap(vtzeout);
         nHeight = 0;
         nVersion = 0;
     }
@@ -76,7 +76,7 @@ public:
     //! empty constructor
     CCoins() : fCoinBase(false), vout(0), vtzeout(), nHeight(0), nVersion(0) { }
 
-    /** 
+    /**
      * Remove spent outputs at the end of vout & tzeout.
      *
      * This is principally useful in relation to the serialized form; it should
@@ -92,7 +92,7 @@ public:
         while (vtzeout.size() > 0 && vtzeout.back().second == SPENT)
             vtzeout.pop_back();
         if (vtzeout.empty())
-            std::vector<CTzeOutEntry>().swap(vtzeout);
+            std::vector<TzeOutEntry>().swap(vtzeout);
     }
 
     void ClearUnspendable() {
@@ -156,7 +156,7 @@ public:
             if (!out.IsNull())
                 return false;
 
-        BOOST_FOREACH(const CTzeOutEntry& out, vtzeout)
+        BOOST_FOREACH(const TzeOutEntry& out, vtzeout)
             if (out.second == UNSPENT)
                 return false;
 
@@ -357,10 +357,10 @@ public:
 
 class CCoinsViewCache;
 
-/** 
+/**
  * A reference to a mutable cache entry. Encapsulating it allows us to run
  *  cleanup code after the modification is finished, and keeping track of
- *  concurrent modifications. 
+ *  concurrent modifications.
  */
 class CCoinsModifier
 {
@@ -387,7 +387,7 @@ protected:
 
     /**
      * Make mutable so that we can "fill the cache" even from Get-methods
-     * declared as "const".  
+     * declared as "const".
      */
     mutable uint256 hashBlock;
     mutable CCoinsMap cacheCoins;
@@ -482,7 +482,7 @@ public:
     //! Calculate the size of the cache (in bytes)
     size_t DynamicMemoryUsage() const;
 
-    /** 
+    /**
      * Amount of bitcoins coming in to a transaction
      * Note that lightweight clients may not know anything besides the hash of previous transactions,
      * so may not be able to calculate this.
