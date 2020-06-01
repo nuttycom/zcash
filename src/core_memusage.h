@@ -13,16 +13,28 @@ static inline size_t RecursiveDynamicUsage(const CScript& script) {
     return memusage::DynamicUsage(*static_cast<const CScriptBase*>(&script));
 }
 
+static inline size_t RecursiveDynamicUsage(const CTzeData& d) {
+    return memusage::DynamicUsage(d.payload);
+}
+
 static inline size_t RecursiveDynamicUsage(const COutPoint& out) {
-    return 0;
+    return 0; //why is this 0?
 }
 
 static inline size_t RecursiveDynamicUsage(const CTxIn& in) {
     return RecursiveDynamicUsage(in.scriptSig) + RecursiveDynamicUsage(in.prevout);
 }
 
+static inline size_t RecursiveDynamicUsage(const CTzeIn& in) {
+    return RecursiveDynamicUsage(in.witness) + RecursiveDynamicUsage(in.prevout);
+}
+
 static inline size_t RecursiveDynamicUsage(const CTxOut& out) {
     return RecursiveDynamicUsage(out.scriptPubKey);
+}
+
+static inline size_t RecursiveDynamicUsage(const CTzeOut& out) {
+    return RecursiveDynamicUsage(out.predicate);
 }
 
 static inline size_t RecursiveDynamicUsage(const CTransaction& tx) {
@@ -30,11 +42,15 @@ static inline size_t RecursiveDynamicUsage(const CTransaction& tx) {
     for (std::vector<CTxIn>::const_iterator it = tx.vin.begin(); it != tx.vin.end(); it++) {
         mem += RecursiveDynamicUsage(*it);
     }
-    // TODO: tzein
+    for (std::vector<CTzeIn>::const_iterator it = tx.vtzein.begin(); it != tx.vtzein.end(); it++) {
+        mem += RecursiveDynamicUsage(*it);
+    }
     for (std::vector<CTxOut>::const_iterator it = tx.vout.begin(); it != tx.vout.end(); it++) {
         mem += RecursiveDynamicUsage(*it);
     }
-    // TODO: tzeout
+    for (std::vector<CTzeOut>::const_iterator it = tx.vtzeout.begin(); it != tx.vtzeout.end(); it++) {
+        mem += RecursiveDynamicUsage(*it);
+    }
     mem += memusage::DynamicUsage(tx.vJoinSplit);
     mem += memusage::DynamicUsage(tx.vShieldedSpend);
     mem += memusage::DynamicUsage(tx.vShieldedOutput);
@@ -46,11 +62,15 @@ static inline size_t RecursiveDynamicUsage(const CMutableTransaction& tx) {
     for (std::vector<CTxIn>::const_iterator it = tx.vin.begin(); it != tx.vin.end(); it++) {
         mem += RecursiveDynamicUsage(*it);
     }
-    // TODO: tzein
+    for (std::vector<CTzeIn>::const_iterator it = tx.vtzein.begin(); it != tx.vtzein.end(); it++) {
+        mem += RecursiveDynamicUsage(*it);
+    }
     for (std::vector<CTxOut>::const_iterator it = tx.vout.begin(); it != tx.vout.end(); it++) {
         mem += RecursiveDynamicUsage(*it);
     }
-    // TODO: tzeout
+    for (std::vector<CTzeOut>::const_iterator it = tx.vtzeout.begin(); it != tx.vtzeout.end(); it++) {
+        mem += RecursiveDynamicUsage(*it);
+    }
     mem += memusage::DynamicUsage(tx.vJoinSplit);
     mem += memusage::DynamicUsage(tx.vShieldedSpend);
     mem += memusage::DynamicUsage(tx.vShieldedOutput);
