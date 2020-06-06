@@ -525,18 +525,17 @@ public:
     CTzeData() {
     }
 
-    CTzeData(TzeType extensionId, TzeMode mode, TzePayload payload) {
-        extensionId = extensionId;
-        mode = mode;
-        payload = payload;
+    CTzeData(const CTzeData& d): extensionId(d.extensionId), mode(d.mode), payload(d.payload) {}
+
+    CTzeData(TzeType extensionId, TzeMode mode, TzePayload payload): extensionId(extensionId), mode(mode), payload(payload) {
     }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(extensionId);
-        READWRITE(mode);
+        READWRITE(COMPACTSIZE(extensionId));
+        READWRITE(COMPACTSIZE(mode));
         READWRITE(payload);
     }
 
@@ -566,6 +565,7 @@ public:
     CTzeData predicate;
 
     CTzeOut() {}
+    CTzeOut(const CTzeOut& out): nValue(out.nValue), predicate(out.predicate) {}
 
     CTzeOut(const CAmount& nValueIn, CTzeData predicateIn): nValue(nValueIn), predicate(predicateIn) {
     }
@@ -602,9 +602,10 @@ public:
     CTzeIn() {
     }
 
-    CTzeIn(COutPoint prevoutIn, CTzeData witness) {
-        prevout = prevoutIn;
-        witness = witness;
+    CTzeIn(const CTzeIn& in): prevout(in.prevout), witness(in.witness) {
+    }
+
+    CTzeIn(COutPoint prevoutIn, CTzeData witnessIn): prevout(prevoutIn), witness(witnessIn) {
     }
 
     ADD_SERIALIZE_METHODS;

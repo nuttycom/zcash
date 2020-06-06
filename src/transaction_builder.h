@@ -56,6 +56,15 @@ struct TransparentInputInfo {
         CAmount value) : scriptPubKey(scriptPubKey), value(value) {}
 };
 
+struct TzeInputInfo {
+    CTzeIn in;
+    CAmount value;
+
+    TzeInputInfo(
+        CTzeIn in,
+        CAmount value) : in(in), value(value) {}
+};
+
 class TransactionBuilderResult {
 private:
     boost::optional<CTransaction> maybeTx;
@@ -87,6 +96,7 @@ private:
     std::vector<libzcash::JSInput> jsInputs;
     std::vector<libzcash::JSOutput> jsOutputs;
     std::vector<TransparentInputInfo> tIns;
+    std::vector<TzeInputInfo> tzeIns;
 
     boost::optional<std::pair<uint256, libzcash::SaplingPaymentAddress>> saplingChangeAddr;
     boost::optional<libzcash::SproutPaymentAddress> sproutChangeAddr;
@@ -137,9 +147,9 @@ public:
 
     void AddTransparentOutput(const CTxDestination& to, CAmount value);
 
-    // void AddTzeInput(COutPoint utxo, CTzeData witness);
+    void AddTzeInput(COutPoint utxo, CTzeData witness, CAmount value);
 
-    // void AddTzeOutput(CAmount value, CTzeData predicate);
+    void AddTzeOutput(CAmount value, CTzeData predicate);
 
     void SendChangeTo(libzcash::SaplingPaymentAddress changeAddr, uint256 ovk);
 

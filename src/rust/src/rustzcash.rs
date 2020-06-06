@@ -45,6 +45,7 @@ use std::os::windows::ffi::OsStringExt;
 use zcash_primitives::{
     block::equihash,
     constants::CRH_IVK_PERSONALIZATION,
+    extensions::transparent as tze,
     jubjub::{
         edwards,
         fs::{Fs, FsRepr},
@@ -57,10 +58,11 @@ use zcash_primitives::{
     sapling::{merkle_hash, spend_sig},
     transaction::Transaction,
     transaction::components::Amount,
-    consensus::extensions::transparent as tze_consensus,
     zip32, JUBJUB,
 };
-use zcash_extensions_api::transparent as tze;
+use zcash_extensions::{
+    consensus::transparent as tze_consensus,
+};
 use zcash_proofs::{
     circuit::sapling::TREE_DEPTH as SAPLING_TREE_DEPTH,
     load_parameters,
@@ -1347,36 +1349,40 @@ pub extern "system" fn librustzcash_mmr_hash_node(
 #[no_mangle]
 pub extern "C" fn librustzcash_tze_verify(
     cbranch: u32,
-    p_extension_id: u64,
-    p_mode: u64,
+    p_extension_id: u32,
+    p_mode: u32,
     p_payload: *const c_uchar,
     p_size: size_t,
-    w_extension_id: u64,
-    w_mode: u64,
+    w_extension_id: u32,
+    w_mode: u32,
     w_payload: *const c_uchar,
     w_size: size_t,
     height: i32,
     tx_serialized: *const c_uchar,
     tx_size: size_t
 ) -> bool {
-   let p_payload = unsafe {
-       slice::from_raw_parts(p_payload, p_size)
-   };
-
-   let w_payload = unsafe {
-       slice::from_raw_parts(w_payload, w_size)
-   };
-
-   let tx_serialized = unsafe {
-       slice::from_raw_parts(tx_serialized, tx_size)
-   };
-
-   match tze_verify_internal(cbranch, p_extension_id, p_mode, p_payload, w_extension_id, w_mode, w_payload, height, tx_serialized) {
-       Ok(_) => true,
-       _ => false,
-   }
+    let p_payload = unsafe {
+        slice::from_raw_parts(p_payload, p_size)
+    };
+ 
+    let w_payload = unsafe {
+        slice::from_raw_parts(w_payload, w_size)
+    };
+ 
+    let tx_serialized = unsafe {
+        slice::from_raw_parts(tx_serialized, tx_size)
+    };
+ 
+    match tze_verify_internal(cbranch, p_extension_id, p_mode, p_payload, w_extension_id, w_mode, w_payload, height, tx_serialized) {
+        Ok(_) => true,
+        err => {
+            println!("{:?}", err);
+            false
+        },
+    }
 }
 
+#[derive(Debug)]
 enum VerifyError {
     NoSuchEpoch(u32),
     IOError(std::io::Error),
@@ -1385,24 +1391,25 @@ enum VerifyError {
 
 fn tze_verify_internal(
     cbranch: u32,
-    p_extension_id: u64,
-    p_mode: u64,
+    p_extension_id: u32,
+    p_mode: u32,
     p_payload: &[u8],
-    w_extension_id: u64,
-    w_mode: u64,
+    w_extension_id: u32,
+    w_mode: u32,
     w_payload: &[u8],
     height: i32,
     tx_serialized: &[u8],
     ) -> Result<(), VerifyError> {
+    println!("In tze_verify_internal");
     let precondition = tze::Precondition {
-        extension_id: p_extension_id as usize,
-        mode: p_mode as usize,
+        extension_id: p_extension_id as u32,
+        mode: p_mode as u32,
         payload: p_payload.to_vec(),
     };
 
     let witness = tze::Witness {
-        extension_id: w_extension_id as usize,
-        mode: w_mode as usize,
+        extension_id: w_extension_id as u32,
+        mode: w_mode as u32,
         payload: w_payload.to_vec(),
     };
 

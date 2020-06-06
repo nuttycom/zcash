@@ -31,19 +31,25 @@ rand_core = "0.5.1"
 zcash_history = "0.2"
 zcash_primitives = "0.2"
 zcash_proofs = "0.2"
-zcash_extensions_api = "0.0"
+zcash_extensions = "0.0"
 
 [profile.release]
 lto = true
 panic = 'abort'
 codegen-units = 1
+debug = true
+opt-level = 0
+
+[profile.dev]
+debug = true
+opt-level = 0
 
 [patch.crates-io]
-bellman = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
-ff = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
-pairing = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
-zcash_history = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
-zcash_primitives = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
-zcash_proofs = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
-zcash_extensions_api = {git = "https://github.com/str4d/librustzcash", branch = "zip-tzes"}
+bellman = {git = "https://github.com/nuttycom/librustzcash", branch = "zip-tzes"}
+ff = {git = "https://github.com/nuttycom/librustzcash", branch = "zip-tzes"}
+pairing = {git = "https://github.com/nuttycom/librustzcash", branch = "zip-tzes"}
+zcash_history = {git = "https://github.com/nuttycom/librustzcash", branch = "zip-tzes"}
+zcash_primitives = {git = "https://github.com/nuttycom/librustzcash", branch = "zip-tzes"}
+zcash_proofs = {git = "https://github.com/nuttycom/librustzcash", branch = "zip-tzes"}
+zcash_extensions = {git = "https://github.com/nuttycom/librustzcash", branch = "zip-tzes"}
 

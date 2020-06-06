@@ -6,6 +6,7 @@
 #include "main.h"
 #include "test/test_tze.cpp"
 #include "transaction_builder.h"
+#include "tze.cpp"
 #include "utiltest.h"
 
 extern ZCJoinSplit* params;
@@ -39,8 +40,10 @@ private:
 
 public:
     ValidationFakeCoinsViewDB() {}
+
     ValidationFakeCoinsViewDB(uint256 blockHash, uint256 txid, CTxOut txOut, int nHeight) :
         tCoin({blockHash, txid, txOut, boost::none, nHeight}) {}
+
     ValidationFakeCoinsViewDB(uint256 blockHash, uint256 txid, CTzeOut tzeOut, int nHeight) :
         tCoin({blockHash, txid, boost::none, tzeOut, nHeight}) {}
 
@@ -59,9 +62,14 @@ public:
     bool GetCoins(const uint256 &txid, CCoins &coins) const {
         if (tCoin && txid == tCoin.get().txid) {
             CCoins newCoins;
-            newCoins.vout.resize(2);
-            if (tCoin.get().txout)  newCoins.vout[0] = tCoin.get().txout.get();
-            if (tCoin.get().tzeout) newCoins.vtzeout[0] = std::make_pair(tCoin.get().tzeout.get(), UNSPENT);
+            if (tCoin.get().txout) {
+                newCoins.vout.resize(1);
+                newCoins.vout[0] = tCoin.get().txout.get();
+            }
+            if (tCoin.get().tzeout) {
+                newCoins.vtzeout.resize(1);
+                newCoins.vtzeout[0] = std::make_pair(tCoin.get().tzeout.get(), UNSPENT);
+            }
             newCoins.nHeight = tCoin.get().nHeight;
             coins.swap(newCoins);
             return true;
@@ -192,7 +200,7 @@ TEST(Validation, ContextualCheckInputsDetectsOldBranchId) {
     CValidationState state;
     PrecomputedTransactionData txdata(tx);
     EXPECT_TRUE(ContextualCheckInputs(
-        MockTZE::getInstance(), tx, state, view, true, 0, false, txdata,
+        LibrustzcashTZE::getInstance(), tx, state, view, true, 0, false, txdata,
         consensusParams, overwinterBranchId, chainActive.Height()));
 
     // Attempt to validate the inputs against Sapling. We should be notified
@@ -205,7 +213,7 @@ TEST(Validation, ContextualCheckInputsDetectsOldBranchId) {
             HexInt(overwinterBranchId)),
         false)).Times(1);
     EXPECT_FALSE(ContextualCheckInputs(
-        MockTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
+        LibrustzcashTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
         consensusParams, saplingBranchId, chainActive.Height()));
 
     // Attempt to validate the inputs against Blossom. All we should learn is
@@ -303,87 +311,106 @@ TEST(Validation, ReceivedBlockTransactions) {
     }
 }
 
-// TEST(Validation, ContextualCheckInputsPassesWithTZE) {
-//     SelectParams(CBaseChainParams::REGTEST);
-//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 10);
-//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, 20);
-//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_BLOSSOM, 30);
-//     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_HEARTWOOD, 40);
-//     auto consensusParams = Params(CBaseChainParams::REGTEST).GetConsensus();
-// 
-//     auto overwinterBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
-//     auto saplingBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId;
-//     auto blossomBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_BLOSSOM].nBranchId;
-//     auto heartwoodBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_HEARTWOOD].nBranchId;
-// 
-//     CBasicKeyStore keystore;
-//     CKey tsk = AddTestCKeyToKeyStore(keystore);
-//     CTxDestination destination = tsk.GetPubKey().GetID();
-//     CScript scriptPubKey = GetScriptForDestination(destination);
-// 
-//     // Create a fake block. It doesn't need to contain any transactions; we just
-//     // need it to be in the global state when our fake view is used.
-//     CBlock block;
-//     block.hashMerkleRoot = block.BuildMerkleTree();
-//     auto blockHash = block.GetHash();
-//     CBlockIndex fakeIndex {block};
-//     mapBlockIndex.insert(std::make_pair(blockHash, &fakeIndex));
-//     chainActive.SetTip(&fakeIndex);
-// 
-//     // Fake a view containing a single coin.
-//     CAmount coinValue(50000);
-//     COutPoint utxo;
-//     utxo.hash = uint256S("4242424242424242424242424242424242424242424242424242424242424242");
-//     utxo.n = 0;
-//     CTzeOut tzeOut;
-//     tzeOut.nValue = coinValue;
-//     tzeOut.predicate = 
-//     ValidationFakeCoinsViewDB fakeDB(blockHash, utxo.hash, tzeOut, 12);
-//     CCoinsViewCache view(&fakeDB);
-// 
-//     // Create a transparent transaction that spends the coin, targeting
-//     // a height during the Overwinter epoch.
-//     auto builder = TransactionBuilder(consensusParams, 15, &keystore);
-//     builder.AddTransparentInput(utxo, scriptPubKey, coinValue);
-//     builder.AddTransparentOutput(destination, 40000);
-//     auto tx = builder.Build().GetTxOrThrow();
-//     ASSERT_FALSE(tx.IsCoinBase());
-// 
-//     // Ensure that the inputs validate against Overwinter.
-//     CValidationState state;
-//     PrecomputedTransactionData txdata(tx);
-//     EXPECT_TRUE(ContextualCheckInputs(
-//         MockTZE::getInstance(), tx, state, view, true, 0, false, txdata,
-//         consensusParams, overwinterBranchId, chainActive.Height()));
-// 
-//     // Attempt to validate the inputs against Sapling. We should be notified
-//     // that an old consensus branch ID was used for an input.
-//     MockCValidationState mockState;
-//     EXPECT_CALL(mockState, DoS(
-//         10, false, REJECT_INVALID,
-//         strprintf("old-consensus-branch-id (Expected %s, found %s)",
-//             HexInt(saplingBranchId),
-//             HexInt(overwinterBranchId)),
-//         false)).Times(1);
-//     EXPECT_FALSE(ContextualCheckInputs(
-//         MockTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
-//         consensusParams, saplingBranchId, chainActive.Height()));
-// 
-//     // Attempt to validate the inputs against Blossom. All we should learn is
-//     // that the signature is invalid, because we don't check more than one
-//     // network upgrade back.
-//     EXPECT_CALL(mockState, DoS(
-//         100, false, REJECT_INVALID,
-//         "mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element)",
-//         false)).Times(1);
-//     EXPECT_FALSE(ContextualCheckInputs(
-//         MockTZE::getInstance(), tx, mockState, view, true, 0, false, txdata,
-//         consensusParams, blossomBranchId, chainActive.Height()));
-// 
-//     // Tear down
-//     chainActive.SetTip(NULL);
-//     mapBlockIndex.erase(blockHash);
-// 
-//     // Revert to default
-//     RegtestDeactivateBlossom();
-// }
+TEST(Validation, ContextualCheckInputsPassesWithTZE) {
+    SelectParams(CBaseChainParams::REGTEST);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_OVERWINTER, 10);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, 20);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_BLOSSOM, 30);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_HEARTWOOD, 40);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_NU4, 50);
+    auto consensusParams = Params(CBaseChainParams::REGTEST).GetConsensus();
+
+    auto overwinterBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
+    auto saplingBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId;
+    auto blossomBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_BLOSSOM].nBranchId;
+    auto heartwoodBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_HEARTWOOD].nBranchId;
+    auto canopyBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_NU4].nBranchId;
+
+    CBasicKeyStore keystore;
+    CKey tsk = AddTestCKeyToKeyStore(keystore);
+    CTxDestination destination = tsk.GetPubKey().GetID();
+
+    // Create a fake block. It doesn't need to contain any transactions; we just
+    // need it to be in the global state when our fake view is used.
+    CBlock block;
+    block.hashMerkleRoot = block.BuildMerkleTree();
+    auto blockHash = block.GetHash();
+    CBlockIndex fakeIndex {block};
+    mapBlockIndex.insert(std::make_pair(blockHash, &fakeIndex));
+    chainActive.SetTip(&fakeIndex);
+
+    try {
+        // Fake a view containing a single transparent coin. This coin will be the funding
+        // source for the TZE transaction.
+        CAmount transparentValue0(50000);
+        CScript scriptPubKey = GetScriptForDestination(destination);
+        CTxOut txOut0(transparentValue0, scriptPubKey);
+
+        // Fake a txid for txOut0 & add it to the db.
+        COutPoint utxo0(uint256S("4242424242424242424242424242424242424242424242424242424242424242"), 0);
+        ValidationFakeCoinsViewDB fakeDB0(blockHash, utxo0.hash, txOut0, 12);
+        CCoinsViewCache view0(&fakeDB0);
+
+        // Create a transparent transaction that spends the coin, targeting
+        // a height during the NU5 epoch
+        auto builder = TransactionBuilder(consensusParams, 55, &keystore);
+        builder.AddTransparentInput(utxo0, scriptPubKey, transparentValue0);
+        CTxDestination dest = tsk.GetPubKey().GetID();
+        builder.SendChangeTo(dest);
+
+        // Create TZE output using preimage_1 = [1; 32]; preimage_2 = [2; 32];
+        // the predicate bytes below were derived from the librustzcash 
+        // serialization of the demo payload for these preimages.
+        CAmount tzeValue0(40000);
+        std::vector<uint8_t> predBytes0 {
+            0xd2, 0x3c, 0x00, 0xda, 0xc4, 0x47, 0x39, 0xd7, 
+            0x0b, 0x25, 0x04, 0xc4, 0xf3, 0xe7, 0x1a, 0x68, 
+            0xdb, 0x92, 0x3b, 0x30, 0xde, 0x5a, 0x09, 0x72, 
+            0x10, 0xf7, 0x4e, 0xe5, 0x2f, 0x53, 0x94, 0xb8};
+        CTzeData predicate0(0, 0, predBytes0);
+        builder.AddTzeOutput(tzeValue0, predicate0);
+
+        auto tx = builder.Build().GetTxOrThrow();
+        ASSERT_FALSE(tx.IsCoinBase());
+
+        // Ensure that the inputs validate against NU5
+        CValidationState state;
+        PrecomputedTransactionData txdata(tx);
+        EXPECT_TRUE(ContextualCheckInputs(
+            LibrustzcashTZE::getInstance(), tx, state, view0, true, 0, false, txdata,
+            consensusParams, canopyBranchID, chainActive.Height()));
+
+        // reproduce the previous output to add it to the fake view with a fake txid
+        CTzeOut out0(tzeValue0, predicate0); 
+        COutPoint utzeo0(uint256S("5252525252525252525252525252525252525252525252525252525252525252"), 0);
+        ValidationFakeCoinsViewDB fakeDB1(blockHash, utzeo0.hash, out0, 51);
+        CCoinsViewCache view1(&fakeDB1);
+
+        auto builder2 = TransactionBuilder(consensusParams, 56, &keystore);
+        builder2.SendChangeTo(dest); //use the same change address as before
+
+        std::vector<uint8_t> witnessBytes0(32, 0x01);
+        CTzeData witness0(0, 0, witnessBytes0);
+        builder2.AddTzeInput(utzeo0, witness0, tzeValue0);
+
+        CAmount tzeValue1(30000);
+        std::vector<uint8_t> predBytes1 { 
+            0xd9, 0x81, 0x80, 0x87, 0xde, 0x72, 0x44, 0xab, 
+            0xc1, 0xb5, 0xfc, 0xf2, 0x8e, 0x55, 0xe4, 0x2c, 
+            0x7f, 0xf9, 0xc6, 0x78, 0xc0, 0x60, 0x51, 0x81, 
+            0xf3, 0x7a, 0xc5, 0xd7, 0x41, 0x4a, 0x7b, 0x95};
+        CTzeData predicate1(0, 1, predBytes1);
+        builder2.AddTzeOutput(tzeValue1, predicate1);
+
+        auto tx2 = builder2.Build().GetTxOrThrow();
+        PrecomputedTransactionData txdata2(tx2);
+        ASSERT_FALSE(tx2.IsCoinBase());
+
+        EXPECT_TRUE(ContextualCheckInputs(
+            LibrustzcashTZE::getInstance(), tx2, state, view1, true, 0, false, txdata2,
+            consensusParams, canopyBranchID, chainActive.Height()));
+    } catch (UniValue e) {
+        cout << e.write(1, 2);
+        throw e;
+    }
+}

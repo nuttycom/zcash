@@ -20,7 +20,6 @@ public:
         CDataStream ss(SER_DISK, CLIENT_VERSION);
         ss << ctx.tx;
 
-        // TODO: serialize ctx.tx into txser
         return librustzcash_tze_verify(
                 consensusBranchId,
                 predicate.extensionId,

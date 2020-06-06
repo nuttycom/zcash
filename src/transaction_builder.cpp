@@ -220,26 +220,18 @@ void TransactionBuilder::AddTransparentOutput(const CTxDestination& to, CAmount 
     mtx.vout.push_back(out);
 }
 
-// void TransactionBuilder::AddTzeInput(COutPoint utxo, CScript scriptPubKey, CAmount value)
-// {
-//     if (keystore == nullptr) {
-//         throw std::runtime_error("Cannot add transparent inputs to a TransactionBuilder without a keystore");
-//     }
-// 
-//     mtx.vin.emplace_back(utxo);
-//     tIns.emplace_back(scriptPubKey, value);
-// }
-// 
-// void TransactionBuilder::AddTzeOutput(const CTxDestination& to, CAmount value)
-// {
-//     if (!IsValidDestination(to)) {
-//         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid output address, not a valid taddr.");
-//     }
-// 
-//     CScript scriptPubKey = GetScriptForDestination(to);
-//     CTxOut out(value, scriptPubKey);
-//     mtx.vout.push_back(out);
-// }
+void TransactionBuilder::AddTzeInput(COutPoint utxo, CTzeData witness, CAmount value)
+{
+    CTzeIn in(utxo, witness);
+    mtx.vtzein.push_back(in);
+    tzeIns.emplace_back(in, value);
+}
+
+void TransactionBuilder::AddTzeOutput(CAmount value, CTzeData precondition)
+{
+    CTzeOut out(value, precondition);
+    mtx.vtzeout.push_back(out);
+}
 
 void TransactionBuilder::SetFee(CAmount fee)
 {
@@ -288,8 +280,14 @@ TransactionBuilderResult TransactionBuilder::Build()
     for (auto tIn : tIns) {
         change += tIn.value;
     }
+    for (auto tzeIn : tzeIns) {
+        change += tzeIn.value;
+    }
     for (auto tOut : mtx.vout) {
         change -= tOut.nValue;
+    }
+    for (auto tzeOut : mtx.vtzeout) {
+        change -= tzeOut.nValue;
     }
     if (change < 0) {
         return TransactionBuilderResult("Change cannot be negative");
