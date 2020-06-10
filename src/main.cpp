@@ -6931,9 +6931,9 @@ CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Para
     bool isOverwintered = consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_OVERWINTER);
     if (isOverwintered) {
         mtx.fOverwintered = true;
-        if (consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_NU4)) {
-            mtx.nVersionGroupId = NU4_VERSION_GROUP_ID;
-            mtx.nVersion = NU4_TX_VERSION;
+        if (consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_NEXT)) {
+            mtx.nVersionGroupId = NEXT_VERSION_GROUP_ID;
+            mtx.nVersion = NEXT_TX_VERSION;
         } else if (consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_SAPLING)) {
             mtx.nVersionGroupId = SAPLING_VERSION_GROUP_ID;
             mtx.nVersion = SAPLING_TX_VERSION;

@@ -317,14 +317,16 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_SAPLING, 20);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_BLOSSOM, 30);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_HEARTWOOD, 40);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_NU4, 50);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_CANOPY, 50);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_NEXT, 60);
     auto consensusParams = Params(CBaseChainParams::REGTEST).GetConsensus();
 
     auto overwinterBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
     auto saplingBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId;
     auto blossomBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_BLOSSOM].nBranchId;
     auto heartwoodBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_HEARTWOOD].nBranchId;
-    auto canopyBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_NU4].nBranchId;
+    auto canopyBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_CANOPY].nBranchId;
+    auto nextBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_NEXT].nBranchId;
 
     CBasicKeyStore keystore;
     CKey tsk = AddTestCKeyToKeyStore(keystore);
@@ -353,7 +355,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
 
         // Create a transparent transaction that spends the coin, targeting
         // a height during the NU5 epoch
-        auto builder = TransactionBuilder(consensusParams, 55, &keystore);
+        auto builder = TransactionBuilder(consensusParams, 65, &keystore);
         builder.AddTransparentInput(utxo0, scriptPubKey, transparentValue0);
         CTxDestination dest = tsk.GetPubKey().GetID();
         builder.SendChangeTo(dest);
@@ -378,7 +380,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
         PrecomputedTransactionData txdata(tx);
         EXPECT_TRUE(ContextualCheckInputs(
             LibrustzcashTZE::getInstance(), tx, state, view0, true, 0, false, txdata,
-            consensusParams, canopyBranchID, chainActive.Height()));
+            consensusParams, nextBranchID, chainActive.Height()));
 
         // reproduce the previous output to add it to the fake view with a fake txid
         CTzeOut out0(tzeValue0, predicate0); 
@@ -386,7 +388,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
         ValidationFakeCoinsViewDB fakeDB1(blockHash, utzeo0.hash, out0, 51);
         CCoinsViewCache view1(&fakeDB1);
 
-        auto builder2 = TransactionBuilder(consensusParams, 56, &keystore);
+        auto builder2 = TransactionBuilder(consensusParams, 65, &keystore);
         builder2.SendChangeTo(dest); //use the same change address as before
 
         std::vector<uint8_t> witnessBytes0(32, 0x01);
@@ -408,7 +410,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
 
         EXPECT_TRUE(ContextualCheckInputs(
             LibrustzcashTZE::getInstance(), tx2, state, view1, true, 0, false, txdata2,
-            consensusParams, canopyBranchID, chainActive.Height()));
+            consensusParams, nextBranchID, chainActive.Height()));
     } catch (UniValue e) {
         cout << e.write(1, 2);
         throw e;

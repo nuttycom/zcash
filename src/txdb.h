@@ -302,7 +302,7 @@ public:
                 ::Serialize(s, CTxOutCompressor(REF(coins.vout[i])));
         }
         // tzeout
-        if (coins.nVersion >= NU5_TX_VERSION ) {
+        if (coins.nVersion >= NEXT_TX_VERSION ) {
             auto tzeoutSpent = [](const CCoins::TzeOutCoin& elem) { return elem.second == SPENT; };
 
             unsigned int nTzeMaskSize = 0, nTzeMaskCode = 0;
@@ -339,7 +339,7 @@ public:
                 ::Unserialize(s, REF(CTxOutCompressor(coins.vout[i])));
         }
         // tzeout
-        if (coins.nVersion >= NU5_TX_VERSION ) {
+        if (coins.nVersion >= NEXT_TX_VERSION ) {
             unsigned int nTzeCode = 0;
             ::Unserialize(s, VARINT(nTzeCode));
 
