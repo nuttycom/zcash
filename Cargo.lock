@@ -64,7 +64,7 @@ checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 [[package]]
 name = "bellman"
 version = "0.6.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "bit-vec",
  "blake2s_simd",
@@ -292,7 +292,7 @@ checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 [[package]]
 name = "ff"
 version = "0.6.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "byteorder",
  "ff_derive",
@@ -303,7 +303,7 @@ dependencies = [
 [[package]]
 name = "ff_derive"
 version = "0.6.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "addchain",
  "num-bigint",
@@ -366,7 +366,7 @@ dependencies = [
 [[package]]
 name = "group"
 version = "0.6.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "ff",
  "rand",
@@ -491,7 +491,7 @@ checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
 [[package]]
 name = "pairing"
 version = "0.16.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "byteorder",
  "ff",
@@ -517,9 +517,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.6"
+version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54a21852a652ad6f610c9510194f398ff6f8692e334fd1145fed931f7fbe44ea"
+checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
 dependencies = [
  "proc-macro2",
 ]
@@ -600,9 +600,9 @@ checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 
 [[package]]
 name = "syn"
-version = "1.0.30"
+version = "1.0.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93a56fabc59dce20fe48b6c832cc249c713e7ed88fa28b0ee0a3bfcaae5fe4e2"
+checksum = "b5304cfdf27365b7585c25d4af91b35016ed21ef88f17ced89c7093b43dba8b6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -652,7 +652,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "zcash_extensions"
 version = "0.0.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "blake2b_simd",
  "zcash_primitives",
@@ -661,7 +661,7 @@ dependencies = [
 [[package]]
 name = "zcash_history"
 version = "0.2.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "bigint",
  "blake2b_simd",
@@ -671,7 +671,7 @@ dependencies = [
 [[package]]
 name = "zcash_primitives"
 version = "0.2.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "aes",
  "blake2b_simd",
@@ -693,7 +693,7 @@ dependencies = [
 [[package]]
 name = "zcash_proofs"
 version = "0.2.0"
-source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#17b5f57a3575fba2a5b273f27abef94a38ea5faa"
+source = "git+https://github.com/nuttycom/librustzcash?branch=zip-tzes#d55adbbca185f76689c4be21cafb9d734a69aaf8"
 dependencies = [
  "bellman",
  "blake2b_simd",
