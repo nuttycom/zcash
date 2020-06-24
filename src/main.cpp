@@ -2303,30 +2303,32 @@ bool ContextualCheckInputs(
                 }
             }
 
-            // for each TZE input, look up the associated prior TZE output, and pass both
-            // to the extension checker.
-            for (unsigned int i = 0; i < tx.vtzein.size(); i++) {
-                const COutPoint& prevout = tx.vtzein[i].prevout;
-                const CCoins* pCoins = inputs.AccessCoins(prevout.hash);
-                assert(pCoins && pCoins->vtzeout.size() > prevout.n);
+            if (consensusParams.FeatureActive(nHeight, Consensus::ZIP222_TZE)) {
+                // for each TZE input, look up the associated prior TZE output, and pass both
+                // to the extension checker.
+                for (unsigned int i = 0; i < tx.vtzein.size(); i++) {
+                    const COutPoint& prevout = tx.vtzein[i].prevout;
+                    const CCoins* pCoins = inputs.AccessCoins(prevout.hash);
+                    assert(pCoins && pCoins->vtzeout.size() > prevout.n);
 
-                // Check that the witness has the same tze type and mode as the
-                // predicate. This might be duplicative of a check within the
-                // TZE code itself?
-                const CTzeData& witness = tx.vtzein[i].witness;
-                const CTzeData& predicate = pCoins->vtzeout[prevout.n].first.predicate;
-                if (witness.corresponds(predicate)) {
-                    // construct the context 
-                    TzeContext ctx(nHeight, tx);
+                    // Check that the witness has the same tze type and mode as the
+                    // predicate. This might be duplicative of a check within the
+                    // TZE code itself?
+                    const CTzeData& witness = tx.vtzein[i].witness;
+                    const CTzeData& predicate = pCoins->vtzeout[prevout.n].first.predicate;
+                    if (witness.corresponds(predicate)) {
+                        // construct the context 
+                        TzeContext ctx(nHeight, tx);
 
-                    // call through to the rust API's verify function
-                    if (!tze.check(consensusBranchId, predicate, witness, ctx)) {
-                        // FIXME: Need proper levels
-                        return state.DoS(10, false, REJECT_INVALID, "tze check failed");
+                        // call through to the rust API's verify function
+                        if (!tze.check(consensusBranchId, predicate, witness, ctx)) {
+                            // FIXME: Need proper levels
+                            return state.DoS(10, false, REJECT_INVALID, "tze check failed");
+                        }
+                    } else {
+                        // FIXME: Placeholder, what should the actual rejection be? 
+                        return state.DoS(100, false, REJECT_INVALID, "tze id or mode mismatch");
                     }
-                } else {
-                    // FIXME: Placeholder, what should the actual rejection be? 
-                    return state.DoS(100, false, REJECT_INVALID, "tze id or mode mismatch");
                 }
             }
         }
@@ -6928,20 +6930,13 @@ public:
 CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Params& consensusParams, int nHeight)
 {
     CMutableTransaction mtx;
-    bool isOverwintered = consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_OVERWINTER);
-    if (isOverwintered) {
-        mtx.fOverwintered = true;
-        if (consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_NEXT)) {
-            mtx.nVersionGroupId = NEXT_VERSION_GROUP_ID;
-            mtx.nVersion = NEXT_TX_VERSION;
-        } else if (consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_SAPLING)) {
-            mtx.nVersionGroupId = SAPLING_VERSION_GROUP_ID;
-            mtx.nVersion = SAPLING_TX_VERSION;
-        } else {
-            mtx.nVersionGroupId = OVERWINTER_VERSION_GROUP_ID;
-            mtx.nVersion = OVERWINTER_TX_VERSION;
-        }
-        
+
+    auto txVersionInfo = CurrentTxVersionInfo(consensusParams, nHeight);
+    mtx.fOverwintered   = txVersionInfo.fOverwintered;
+    mtx.nVersionGroupId = txVersionInfo.nVersionGroupId;
+    mtx.nVersion        = txVersionInfo.nVersion;
+
+    if (txVersionInfo.fOverwintered) {
         bool blossomActive = consensusParams.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_BLOSSOM);
         unsigned int defaultExpiryDelta = blossomActive ? DEFAULT_POST_BLOSSOM_TX_EXPIRY_DELTA : DEFAULT_PRE_BLOSSOM_TX_EXPIRY_DELTA;
         mtx.nExpiryHeight = nHeight + (expiryDeltaArg ? expiryDeltaArg.get() : defaultExpiryDelta);
@@ -6959,5 +6954,6 @@ CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Para
             mtx.nExpiryHeight = std::min(mtx.nExpiryHeight, static_cast<uint32_t>(nextActivationHeight.get()) - 1);
         }
     }
+
     return mtx;
 }

@@ -13,6 +13,8 @@
 #include "streams.h"
 #include "uint256.h"
 #include "consensus/consensus.h"
+#include "consensus/params.h"
+#include "consensus/upgrades.h"
 
 #include <array>
 #include <cstdint>
@@ -38,11 +40,24 @@ static_assert(SAPLING_TX_VERSION >= SAPLING_MIN_TX_VERSION,
 static_assert(SAPLING_TX_VERSION <= SAPLING_MAX_TX_VERSION,
     "Sapling tx version must not be higher than maximum");
 
-static const int32_t NEXT_TX_VERSION = 5;
-static_assert(NEXT_TX_VERSION >= TZE_MIN_TX_VERSION,
-    "TZE tx version must not be lower than minimum");
-static_assert(NEXT_TX_VERSION <= TZE_MAX_TX_VERSION,
-    "TZE tx version must not be higher than maximum");
+// Not-yet-active transaction version.
+static const int32_t FUTURE_TX_VERSION = 999999;
+
+struct TxVersionInfo {
+    bool fOverwintered;
+    uint32_t nVersionGroupId;
+    int32_t nVersion;
+};
+
+/**
+ * Returns the current transaction version and version group id,
+ * based upon the specified activation height and active features.
+ */
+TxVersionInfo CurrentTxVersionInfo(const Consensus::Params& consensus, int nHeight);
+
+struct TxParams {
+    unsigned int expiryDelta;
+};
 
 // These constants are defined in the protocol § 7.1:
 // https://zips.z.cash/protocol/protocol.pdf#txnencoding
@@ -630,9 +645,9 @@ static_assert(OVERWINTER_VERSION_GROUP_ID != 0, "version group id must be non-ze
 static constexpr uint32_t SAPLING_VERSION_GROUP_ID = 0x892F2085;
 static_assert(SAPLING_VERSION_GROUP_ID != 0, "version group id must be non-zero as specified in ZIP 202");
 
-// Canopy transaction version group id
-static constexpr uint32_t NEXT_VERSION_GROUP_ID = 0x83252789;
-static_assert(NEXT_VERSION_GROUP_ID != 0, "version group id must be non-zero as specified in ZIP 202");
+// Future transaction version group id
+static constexpr uint32_t FUTURE_VERSION_GROUP_ID = 0x83252789;
+static_assert(FUTURE_VERSION_GROUP_ID != 0, "version group id must be non-zero as specified in ZIP 202");
 
 struct CMutableTransaction;
 
@@ -734,29 +749,37 @@ public:
             fOverwintered &&
             nVersionGroupId == OVERWINTER_VERSION_GROUP_ID &&
             nVersion == OVERWINTER_TX_VERSION;
+
         bool isSaplingV4 =
             fOverwintered &&
             nVersionGroupId == SAPLING_VERSION_GROUP_ID &&
             nVersion == SAPLING_TX_VERSION;
-        bool hasTZE =
+
+        // It is not possible to make the transaction's serialized form vary on
+        // a per-enabled-feature basis.The approach here is that all
+        // serialization rules for not-yet-released features must be
+        // non-conflicting and transaction version/group must be set to
+        // FUTURE_TX_(VERSION/GROUP_ID)
+        bool isFuture =
             fOverwintered &&
-            nVersionGroupId == NEXT_VERSION_GROUP_ID &&
-            nVersion == NEXT_TX_VERSION;
-        if (fOverwintered && !(isOverwinterV3 || isSaplingV4 || hasTZE)) {
+            nVersionGroupId == FUTURE_VERSION_GROUP_ID &&
+            nVersion == FUTURE_TX_VERSION;
+
+        if (fOverwintered && !(isOverwinterV3 || isSaplingV4 || isFuture)) {
             throw std::ios_base::failure("Unknown transaction format");
         }
 
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
         READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
-        if (hasTZE) {
+        if (isFuture) {
             READWRITE(*const_cast<std::vector<CTzeIn>*>(&vtzein));
             READWRITE(*const_cast<std::vector<CTzeOut>*>(&vtzeout));
         }
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
-        if (isOverwinterV3 || isSaplingV4 || hasTZE) {
+        if (isOverwinterV3 || isSaplingV4 || isFuture) {
             READWRITE(*const_cast<uint32_t*>(&nExpiryHeight));
         }
-        if (isSaplingV4 || hasTZE) {
+        if (isSaplingV4 || isFuture) {
             READWRITE(*const_cast<CAmount*>(&valueBalance));
             READWRITE(*const_cast<std::vector<SpendDescription>*>(&vShieldedSpend));
             READWRITE(*const_cast<std::vector<OutputDescription>*>(&vShieldedOutput));
@@ -770,7 +793,7 @@ public:
                 READWRITE(*const_cast<joinsplit_sig_t*>(&joinSplitSig));
             }
         }
-        if ((isSaplingV4 || hasTZE) && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
+        if ((isSaplingV4 || isFuture) && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
             READWRITE(*const_cast<binding_sig_t*>(&bindingSig));
         }
         if (ser_action.ForRead())
@@ -895,25 +918,25 @@ struct CMutableTransaction
             fOverwintered &&
             nVersionGroupId == SAPLING_VERSION_GROUP_ID &&
             nVersion == SAPLING_TX_VERSION;
-        bool hasTZE =
+        bool isFuture =
             fOverwintered &&
-            nVersionGroupId == NEXT_VERSION_GROUP_ID &&
-            nVersion == NEXT_TX_VERSION;
-        if (fOverwintered && !(isOverwinterV3 || isSaplingV4 || hasTZE)) {
+            nVersionGroupId == FUTURE_VERSION_GROUP_ID &&
+            nVersion == FUTURE_TX_VERSION;
+        if (fOverwintered && !(isOverwinterV3 || isSaplingV4 || isFuture)) {
             throw std::ios_base::failure("Unknown transaction format");
         }
 
         READWRITE(vin);
         READWRITE(vout);
-        if (hasTZE) {
+        if (isFuture) {
             READWRITE(vtzein);
             READWRITE(vtzeout);
         }
         READWRITE(nLockTime);
-        if (isOverwinterV3 || isSaplingV4 || hasTZE) {
+        if (isOverwinterV3 || isSaplingV4 || isFuture) {
             READWRITE(nExpiryHeight);
         }
-        if (isSaplingV4 || hasTZE) {
+        if (isSaplingV4 || isFuture) {
             READWRITE(valueBalance);
             READWRITE(vShieldedSpend);
             READWRITE(vShieldedOutput);
@@ -926,7 +949,7 @@ struct CMutableTransaction
                 READWRITE(joinSplitSig);
             }
         }
-        if ((isSaplingV4 || hasTZE) && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
+        if ((isSaplingV4 || isFuture) && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
             READWRITE(bindingSig);
         }
     }

@@ -264,4 +264,13 @@ template <typename Callable> void TraceThread(const char* name,  Callable func)
     }
 }
 
+template<typename A, typename F>
+bool Any(std::vector<A>& xs, F f) {
+    for ( auto it = xs.begin(), end = xs.end(); it != end; ++it ) {
+        if (f(*it)) return true;
+    }
+
+    return false;
+}
+
 #endif // BITCOIN_UTIL_H

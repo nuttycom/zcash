@@ -318,7 +318,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_BLOSSOM, 30);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_HEARTWOOD, 40);
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_CANOPY, 50);
-    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_NEXT, 60);
+    UpdateNetworkUpgradeParameters(Consensus::UPGRADE_FUTURE, 60);
     auto consensusParams = Params(CBaseChainParams::REGTEST).GetConsensus();
 
     auto overwinterBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_OVERWINTER].nBranchId;
@@ -326,7 +326,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
     auto blossomBranchId = NetworkUpgradeInfo[Consensus::UPGRADE_BLOSSOM].nBranchId;
     auto heartwoodBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_HEARTWOOD].nBranchId;
     auto canopyBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_CANOPY].nBranchId;
-    auto nextBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_NEXT].nBranchId;
+    auto nextBranchID = NetworkUpgradeInfo[Consensus::UPGRADE_FUTURE].nBranchId;
 
     CBasicKeyStore keystore;
     CKey tsk = AddTestCKeyToKeyStore(keystore);
