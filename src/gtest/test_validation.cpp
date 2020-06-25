@@ -354,7 +354,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
         CCoinsViewCache view0(&fakeDB0);
 
         // Create a transparent transaction that spends the coin, targeting
-        // a height during the NU5 epoch
+        // a height during the FUTURE epoch
         auto builder = TransactionBuilder(consensusParams, 65, &keystore);
         builder.AddTransparentInput(utxo0, scriptPubKey, transparentValue0);
         CTxDestination dest = tsk.GetPubKey().GetID();
@@ -375,7 +375,7 @@ TEST(Validation, ContextualCheckInputsPassesWithTZE) {
         auto tx = builder.Build().GetTxOrThrow();
         ASSERT_FALSE(tx.IsCoinBase());
 
-        // Ensure that the inputs validate against NU5
+        // Ensure that the inputs validate against FUTURE
         CValidationState state;
         PrecomputedTransactionData txdata(tx);
         EXPECT_TRUE(ContextualCheckInputs(

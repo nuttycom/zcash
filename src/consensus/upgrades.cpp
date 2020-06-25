@@ -46,8 +46,8 @@ const struct NUInfo NetworkUpgradeInfo[Consensus::MAX_NETWORK_UPGRADES] = {
     },
     {
         /*.nBranchId =*/ 0x7374f403,
-        /*.strName =*/ "NEXT",
-        /*.strInfo =*/ "See https://z.cash/upgrade/NEXT/ for details.",
+        /*.strName =*/ "FUTURE",
+        /*.strInfo =*/ "See https://z.cash/upgrade/FUTURE/ for details.",
     }
 };
 

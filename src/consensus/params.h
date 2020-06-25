@@ -80,7 +80,7 @@ struct NetworkUpgrade {
 
 enum ConsensusFeature : uint32_t {
     ZIP222_TZE,
-    // Index value for the maximum consensus feature ID. 
+    // Index value for the maximum consensus feature ID.
     MAX_FEATURES
 };
 
@@ -164,10 +164,10 @@ struct Params {
     int nMajorityWindow;
     NetworkUpgrade vUpgrades[MAX_NETWORK_UPGRADES];
 
-    /** 
+    /**
      * A set of features that have been explicitly force-enabled
      * via the CLI, overriding block-height based decisions for
-     * this feature. 
+     * this feature.
      */
     std::set<ConsensusFeature> vRequiredFeatures;
 

@@ -15,10 +15,10 @@
  * If the vout at the specified position is non-null, set
  * it to null then remove null entries from the list of vouts.
  */
-bool CCoins::Spend(uint32_t nPos) 
+bool CCoins::Spend(uint32_t nPos)
 {
     // Why the .IsNull() check here? This stops us from running
-    // the Cleanup() call 
+    // the Cleanup() call
     if (nPos >= vout.size() || vout[nPos].IsNull())
         return false;
     vout[nPos].SetNull();
@@ -27,7 +27,7 @@ bool CCoins::Spend(uint32_t nPos)
     return true;
 }
 
-bool CCoins::SpendTzeOut(uint32_t nPos) 
+bool CCoins::SpendTzeOut(uint32_t nPos)
 {
     if (nPos >= vtzeout.size() || vtzeout[nPos].second == SPENT) {
         return false;
@@ -479,7 +479,7 @@ void CCoinsViewCache::PushHistoryNode(uint32_t epochId, const HistoryNode node) 
     std::array<HistoryNode, 32> appendBuf;
 
     uint32_t appends = librustzcash_mmr_append(
-        epochId, 
+        epochId,
         historyCache.length,
         entry_indices.data(),
         entries.data(),
@@ -511,7 +511,7 @@ void CCoinsViewCache::PopHistoryNode(uint32_t epochId) {
             // `SelectHistoryCache` selects the tree for the new consensus
             // branch ID, not the one that existed on the chain being rolled
             // back.
-            
+
             // Sensible action is to truncate the history cache:
         case 1:
             // Just resetting tree to empty
@@ -683,7 +683,7 @@ bool CCoinsViewCache::HaveCoins(const uint256 &txid) const {
     // as we only care about the case where a transaction was replaced entirely
     // in a reorganization (which wipes vout entirely, as opposed to spending
     // which just cleans individual outputs).
-    return (it != cacheCoins.end() && 
+    return (it != cacheCoins.end() &&
             !(it->second.coins.vout.empty() && it->second.coins.vtzeout.empty()));
 }
 
