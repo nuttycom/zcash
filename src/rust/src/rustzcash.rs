@@ -42,6 +42,7 @@ use std::ffi::OsString;
 #[cfg(target_os = "windows")]
 use std::os::windows::ffi::OsStringExt;
 
+use zcash_extensions::consensus::transparent as tze_consensus;
 use zcash_primitives::{
     block::equihash,
     constants::CRH_IVK_PERSONALIZATION,
@@ -56,12 +57,9 @@ use zcash_primitives::{
     primitives::{Diversifier, Note, PaymentAddress, ProofGenerationKey, ViewingKey},
     redjubjub::{self, Signature},
     sapling::{merkle_hash, spend_sig},
-    transaction::Transaction,
     transaction::components::Amount,
+    transaction::Transaction,
     zip32, JUBJUB,
-};
-use zcash_extensions::{
-    consensus::transparent as tze_consensus,
 };
 use zcash_proofs::{
     circuit::sapling::TREE_DEPTH as SAPLING_TREE_DEPTH,
@@ -1359,26 +1357,30 @@ pub extern "C" fn librustzcash_tze_verify(
     w_size: size_t,
     height: i32,
     tx_serialized: *const c_uchar,
-    tx_size: size_t
+    tx_size: size_t,
 ) -> bool {
-    let p_payload = unsafe {
-        slice::from_raw_parts(p_payload, p_size)
-    };
- 
-    let w_payload = unsafe {
-        slice::from_raw_parts(w_payload, w_size)
-    };
- 
-    let tx_serialized = unsafe {
-        slice::from_raw_parts(tx_serialized, tx_size)
-    };
- 
-    match tze_verify_internal(cbranch, p_extension_id, p_mode, p_payload, w_extension_id, w_mode, w_payload, height, tx_serialized) {
+    let p_payload = unsafe { slice::from_raw_parts(p_payload, p_size) };
+
+    let w_payload = unsafe { slice::from_raw_parts(w_payload, w_size) };
+
+    let tx_serialized = unsafe { slice::from_raw_parts(tx_serialized, tx_size) };
+
+    match tze_verify_internal(
+        cbranch,
+        p_extension_id,
+        p_mode,
+        p_payload,
+        w_extension_id,
+        w_mode,
+        w_payload,
+        height,
+        tx_serialized,
+    ) {
         Ok(_) => true,
         err => {
             println!("{:?}", err);
             false
-        },
+        }
     }
 }
 
@@ -1399,7 +1401,7 @@ fn tze_verify_internal(
     w_payload: &[u8],
     height: i32,
     tx_serialized: &[u8],
-    ) -> Result<(), VerifyError> {
+) -> Result<(), VerifyError> {
     println!("In tze_verify_internal");
     let precondition = tze::Precondition {
         extension_id: p_extension_id as u32,
@@ -1415,10 +1417,13 @@ fn tze_verify_internal(
 
     let ctx = tze_consensus::Context {
         height,
-        tx: &Transaction::read(tx_serialized).map_err(VerifyError::IOError)?
+        tx: &Transaction::read(tx_serialized).map_err(VerifyError::IOError)?,
     };
 
-    let epoch = tze_consensus::epoch_for_branch(cbranch).ok_or(VerifyError::NoSuchEpoch(cbranch))?;
+    let epoch =
+        tze_consensus::epoch_for_branch(cbranch).ok_or(VerifyError::NoSuchEpoch(cbranch))?;
 
-    epoch.verify(&precondition, &witness, &ctx).map_err(VerifyError::TzeError)
+    epoch
+        .verify(&precondition, &witness, &ctx)
+        .map_err(VerifyError::TzeError)
 }
