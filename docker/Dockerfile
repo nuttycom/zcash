@@ -13,10 +13,6 @@ RUN mkdir ~/.cargo && \
     echo "linker = \"x86_64-w64-mingw32-gcc\"" >> ~/.cargo/config && \
     echo "ar = \"x86_64-w64-mingw32-gcc-ar\""  >> ~/.cargo/config
 
-RUN cd /opt && git clone https://github.com/adityapk00/zcash.git zcash-linux && cd zcash-linux && \
-    git checkout zecwallet-build && \
-    CONFIGURE_FLAGS="--disable-tests --disable-mining --disable-bench" ./zcutil/build.sh -j$(nproc) 
-
-RUN cd /opt && git clone https://github.com/adityapk00/zcash.git zcash-win && cd zcash-win && \
-    git checkout zecwallet-build && \
-    CONFIGURE_FLAGS="--disable-tests --disable-mining --disable-bench" HOST=x86_64-w64-mingw32 ./zcutil/build.sh -j$(nproc)  
+RUN cd /opt && git clone https://github.com/adityapk00/zcash.git zcash-build && cd zcash-build && \
+    git worktree add --detach ../zcash-linux origin/zecwallet-build && \
+    git worktree add --detach ../zcash-win origin/zecwallet-build

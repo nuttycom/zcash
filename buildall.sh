@@ -18,7 +18,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 # Build for linux in docker
-docker run --rm -v $(pwd):/opt/zcash adityapk00/zcash:latest bash -c "cd /opt/zcash-linux && git pull && CONFIGURE_FLAGS=\"--disable-tests --disable-mining --disable-bench\" ./zcutil/build.sh -j$(nproc) && strip src/zcashd && strip src/zcash-cli && cp src/zcashd src/zcash-cli /opt/zcash/artifacts/linux/"
+docker run --rm -v $(pwd):/opt/zcash adityapk00/zcash:latest bash -c "cd /opt/zcash-linux && git fetch && git reset --hard origin/zecwallet-build && CONFIGURE_FLAGS=\"--disable-tests --disable-mining --disable-bench\" ./zcutil/build.sh -j$(nproc) && strip src/zcashd && strip src/zcash-cli && cp src/zcashd src/zcash-cli /opt/zcash/artifacts/linux/"
 
 # Build for win in docker
-docker run --rm -v $(pwd):/opt/zcash adityapk00/zcash:latest bash -c "cd /opt/zcash-win && git pull && CONFIGURE_FLAGS=\"--disable-tests --disable-mining --disable-bench\" HOST=x86_64-w64-mingw32 ./zcutil/build.sh -j$(nproc) && strip src/zcashd.exe && strip src/zcash-cli.exe && cp src/zcashd.exe src/zcash-cli.exe /opt/zcash/artifacts/win/"
+docker run --rm -v $(pwd):/opt/zcash adityapk00/zcash:latest bash -c "cd /opt/zcash-win && git fetch && git reset --hard origin/zecwallet-build && CONFIGURE_FLAGS=\"--disable-tests --disable-mining --disable-bench\" HOST=x86_64-w64-mingw32 ./zcutil/build.sh -j$(nproc) && strip src/zcashd.exe && strip src/zcash-cli.exe && cp src/zcashd.exe src/zcash-cli.exe /opt/zcash/artifacts/win/"
