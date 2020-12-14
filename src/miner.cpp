@@ -116,10 +116,6 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
     }
 }
 
-bool IsValidMinerAddress(const MinerAddress& minerAddr) {
-    return minerAddr.which() != 0;
-}
-
 class AddFundingStreamValueToTx : public boost::static_visitor<bool>
 {
 private:
@@ -358,9 +354,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
             double dPriority = 0;
             CAmount nTotalIn = 0;
             bool fMissingInputs = false;
-
-            // Add transparent input value
-            BOOST_FOREACH(const CTxIn& txin, tx.vin)
+            for (const CTxIn& txin : tx.vin)
             {
                 // Read prev transaction
                 if (!view.HaveCoins(txin.prevout.hash))
@@ -596,7 +590,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
             // Add transactions that depend on this one to the priority queue
             if (mapDependers.count(hash))
             {
-                BOOST_FOREACH(COrphan* porphan, mapDependers[hash])
+                for (COrphan* porphan : mapDependers[hash])
                 {
                     if (!porphan->setDependsOn.empty())
                     {
@@ -786,7 +780,7 @@ void static BitcoinMiner(const CChainParams& chainparams)
 
     try {
         // Throw an error if no address valid for mining was provided.
-        if (!IsValidMinerAddress(minerAddress)) {
+        if (!boost::apply_visitor(IsValidMinerAddress(), minerAddress)) {
             throw std::runtime_error("No miner address available (mining requires a wallet or -mineraddress)");
         }
 

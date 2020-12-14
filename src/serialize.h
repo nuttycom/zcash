@@ -21,6 +21,7 @@
 #include <string>
 #include <string.h>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <boost/optional.hpp>

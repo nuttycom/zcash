@@ -13,7 +13,8 @@
 
 #include <boost/foreach.hpp>
 #include <boost/optional.hpp>
-#include <set>
+#include <boost/variant.hpp>
+//#include <set>
 
 namespace Consensus {
 
@@ -304,6 +305,7 @@ struct Params {
     unsigned int nEquihashK = 0;
     uint256 powLimit;
     boost::optional<uint32_t> nPowAllowMinDifficultyBlocksAfterHeight;
+    bool fPowNoRetargeting;
     int64_t nPowAveragingWindow;
     int64_t nPowMaxAdjustDown;
     int64_t nPowMaxAdjustUp;

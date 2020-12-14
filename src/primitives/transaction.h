@@ -416,6 +416,8 @@ class CTxIn
 public:
     COutPoint prevout;
     CScript scriptSig;
+    // The only use of nSequence (via IsFinal) is in TransactionSignatureChecker::CheckLockTime
+    // It disables the nLockTime feature when set to maxint.
     uint32_t nSequence;
 
     CTxIn()

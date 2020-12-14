@@ -50,7 +50,7 @@ int64_t static DecodeDumpTime(const std::string &str) {
 
 std::string static EncodeDumpString(const std::string &str) {
     std::stringstream ret;
-    BOOST_FOREACH(unsigned char c, str) {
+    for (unsigned char c : str) {
         if (c <= 32 || c >= 128 || c == '%') {
             ret << '%' << HexStr(&c, &c + 1);
         } else {
@@ -850,14 +850,15 @@ UniValue z_importviewingkey(const UniValue& params, bool fHelp)
 
     auto addrInfo = boost::apply_visitor(libzcash::AddressInfoFromViewingKey{}, viewingkey);
     UniValue result(UniValue::VOBJ);
+    const string strAddress = keyIO.EncodePaymentAddress(addrInfo.second);
     result.pushKV("type", addrInfo.first);
-    result.pushKV("address", keyIO.EncodePaymentAddress(addrInfo.second));
+    result.pushKV("address", strAddress);
 
     auto addResult = boost::apply_visitor(AddViewingKeyToWallet(pwalletMain), viewingkey);
     if (addResult == SpendingKeyExists) {
         throw JSONRPCError(
             RPC_WALLET_ERROR,
-            "The wallet already contains the private key for this viewing key");
+            "The wallet already contains the private key for this viewing key (address: " + strAddress + ")");
     } else if (addResult == KeyAlreadyExists && fIgnoreExistingKey) {
         return result;
     }

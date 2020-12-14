@@ -185,6 +185,7 @@ BITCOIN_CORE_H = \
   protocol.h \
   pubkey.h \
   random.h \
+  reverse_iterator.h \
   reverselock.h \
   rpc/client.h \
   rpc/protocol.h \
@@ -593,6 +594,7 @@ clean-local:
 	rm -f fuzz.cpp
 	rm -rf fuzzing/*/output
 	-rm -f config.h
+	-rm -f *.lib bench/*.lib test/*.lib
 
 .rc.o:
 	@test -f $(WINDRES)

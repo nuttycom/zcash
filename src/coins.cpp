@@ -923,9 +923,9 @@ std::optional<UnsatisfiedShieldedReq> CCoinsViewCache::HaveShieldedRequirements(
 {
     boost::unordered_map<uint256, SproutMerkleTree, CCoinsKeyHasher> intermediates;
 
-    BOOST_FOREACH(const JSDescription &joinsplit, tx.vJoinSplit)
+    for (const JSDescription &joinsplit : tx.vJoinSplit)
     {
-        BOOST_FOREACH(const uint256& nullifier, joinsplit.nullifiers)
+        for (const uint256& nullifier : joinsplit.nullifiers)
         {
             if (GetNullifier(nullifier, SPROUT)) {
                 // If the nullifier is set, this transaction
@@ -952,7 +952,7 @@ std::optional<UnsatisfiedShieldedReq> CCoinsViewCache::HaveShieldedRequirements(
             return UnsatisfiedShieldedReq::SproutUnknownAnchor;
         }
 
-        BOOST_FOREACH(const uint256& commitment, joinsplit.commitments)
+        for (const uint256& commitment : joinsplit.commitments)
         {
             tree.append(commitment);
         }
@@ -1022,7 +1022,7 @@ double CCoinsViewCache::GetPriority(const CTransaction &tx, int nHeight) const
 
     // FIXME: this logic is partially duplicated between here and CreateNewBlock in miner.cpp.
     double dResult = 0.0;
-    BOOST_FOREACH(const CTxIn& txin, tx.vin)
+    for (const CTxIn& txin : tx.vin)
     {
         const CCoins* coins = AccessCoins(txin.prevout.hash);
         assert(coins);

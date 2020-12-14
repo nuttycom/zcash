@@ -82,6 +82,8 @@ UniValue getinfo(const UniValue& params, bool fHelp)
 
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("version", CLIENT_VERSION);
+    obj.pushKV("build", FormatFullVersion());
+    obj.pushKV("subversion", strSubVersion);
     obj.pushKV("protocolversion", PROTOCOL_VERSION);
 #ifdef ENABLE_WALLET
     if (pwalletMain) {
@@ -482,7 +484,7 @@ UniValue setmocktime(const UniValue& params, bool fHelp)
     SetMockTime(params[0].get_int64());
 
     uint64_t t = GetTime();
-    BOOST_FOREACH(CNode* pnode, vNodes) {
+    for (CNode* pnode : vNodes) {
         pnode->nLastSend = pnode->nLastRecv = t;
     }
 

@@ -15,7 +15,6 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include <boost/foreach.hpp>
 #include <boost/unordered_map.hpp>
 #include "zcash/History.hpp"
 #include "zcash/IncrementalMerkleTree.hpp"
@@ -100,7 +99,7 @@ public:
     }
 
     void ClearUnspendable() {
-        for(CTxOut &txout : vout) {
+        for (CTxOut &txout : vout) {
             if (txout.scriptPubKey.IsUnspendable())
                 txout.SetNull();
         }
@@ -173,8 +172,8 @@ public:
 
     size_t DynamicMemoryUsage() const {
         size_t ret = memusage::DynamicUsage(vout);
-        for (const CTxOut& txout : vout) {
-            ret += RecursiveDynamicUsage(txout.scriptPubKey);
+        for (const CTxOut &out : vout) {
+            ret += RecursiveDynamicUsage(out.scriptPubKey);
         }
 
         for (const TzeOutCoin& tzeout : vtzeout) {
