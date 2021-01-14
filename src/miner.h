@@ -8,9 +8,11 @@
 
 #include "primitives/block.h"
 
-#include <boost/optional.hpp>
 #include <boost/shared_ptr.hpp>
 #include <stdint.h>
+#include <variant>
+
+#include <boost/shared_ptr.hpp>
 
 class CBlockIndex;
 class CChainParams;
@@ -28,9 +30,9 @@ public:
     friend bool operator<(const InvalidMinerAddress &a, const InvalidMinerAddress &b) { return true; }
 };
 
-typedef boost::variant<InvalidMinerAddress, libzcash::SaplingPaymentAddress, boost::shared_ptr<CReserveScript>> MinerAddress;
+typedef std::variant<InvalidMinerAddress, libzcash::SaplingPaymentAddress, boost::shared_ptr<CReserveScript>> MinerAddress;
 
-class KeepMinerAddress : public boost::static_visitor<>
+class KeepMinerAddress
 {
 public:
     KeepMinerAddress() {}
@@ -42,7 +44,9 @@ public:
     }
 };
 
-class IsValidMinerAddress : public boost::static_visitor<bool>
+bool IsShieldedMinerAddress(const MinerAddress& minerAddr);
+
+class IsValidMinerAddress
 {
 public:
     IsValidMinerAddress() {}
@@ -68,8 +72,10 @@ struct CBlockTemplate
     std::vector<int64_t> vTxSigOps;
 };
 
+CMutableTransaction CreateCoinbaseTransaction(const CChainParams& chainparams, CAmount nFees, const MinerAddress& minerAddress, int nHeight);
+
 /** Generate a new block, without valid proof-of-work */
-CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddress& minerAddress);
+CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddress& minerAddress, const std::optional<CMutableTransaction>& next_coinbase_mtx = std::nullopt);
 
 #ifdef ENABLE_MINING
 /** Get -mineraddress */

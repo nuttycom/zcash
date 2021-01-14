@@ -181,7 +181,7 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
     entry.pushKV("vin", vin);
 
     UniValue vtzein(UniValue::VARR);
-    BOOST_FOREACH(const CTzeIn& tzein, tx.vtzein) {
+    for (const CTzeIn& tzein : tx.vtzein) {
         UniValue in(UniValue::VOBJ);
         in.pushKV("txid", tzein.prevout.hash.GetHex());
         in.pushKV("vout", (int64_t)tzein.prevout.n);

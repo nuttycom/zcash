@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2018 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #
 # Check for duplicate includes.
 # Guard against accidental introduction of new Boost dependencies.
@@ -63,7 +63,6 @@ EXPECTED_BOOST_INCLUDES=(
     boost/iostreams/concepts.hpp
     boost/iostreams/stream.hpp
     boost/math/distributions/poisson.hpp
-    boost/optional.hpp
     boost/preprocessor/arithmetic/add.hpp
     boost/preprocessor/arithmetic/sub.hpp
     boost/preprocessor/cat.hpp
@@ -100,10 +99,6 @@ EXPECTED_BOOST_INCLUDES=(
     boost/uuid/uuid.hpp
     boost/uuid/uuid_generators.hpp
     boost/uuid/uuid_io.hpp
-    boost/variant.hpp
-    boost/variant/apply_visitor.hpp
-    boost/variant/get.hpp
-    boost/variant/static_visitor.hpp
     boost/version.hpp
 )
 

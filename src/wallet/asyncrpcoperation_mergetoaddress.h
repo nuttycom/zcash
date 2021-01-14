@@ -15,15 +15,13 @@
 #include "zcash/JoinSplit.hpp"
 
 #include <array>
+#include <optional>
 #include <tuple>
 #include <unordered_map>
 
 #include <univalue.h>
 
 #include <rust/ed25519/types.h>
-
-// Default transaction fee if caller does not specify one.
-#define MERGE_TO_ADDRESS_OPERATION_DEFAULT_MINERS_FEE 10000
 
 using namespace libzcash;
 
@@ -50,7 +48,7 @@ struct MergeToAddressJSInfo {
 
 // A struct to help us track the witness and anchor for a given JSOutPoint
 struct MergeToAddressWitnessAnchorData {
-    boost::optional<SproutWitness> witness;
+    std::optional<SproutWitness> witness;
     uint256 anchor;
 };
 
@@ -58,13 +56,13 @@ class AsyncRPCOperation_mergetoaddress : public AsyncRPCOperation
 {
 public:
     AsyncRPCOperation_mergetoaddress(
-        boost::optional<TransactionBuilder> builder,
+        std::optional<TransactionBuilder> builder,
         CMutableTransaction contextualTx,
         std::vector<MergeToAddressInputUTXO> utxoInputs,
         std::vector<MergeToAddressInputSproutNote> sproutNoteInputs,
         std::vector<MergeToAddressInputSaplingNote> saplingNoteInputs,
         MergeToAddressRecipient recipient,
-        CAmount fee = MERGE_TO_ADDRESS_OPERATION_DEFAULT_MINERS_FEE,
+        CAmount fee = DEFAULT_FEE,
         UniValue contextInfo = NullUniValue);
     virtual ~AsyncRPCOperation_mergetoaddress();
 
@@ -86,7 +84,7 @@ private:
     friend class TEST_FRIEND_AsyncRPCOperation_mergetoaddress; // class for unit testing
 
     UniValue contextinfo_; // optional data to include in return value from getStatus()
-    
+
     bool isUsingBuilder_; // Indicates that no Sprout addresses are involved
     uint32_t consensusBranchId_;
     CAmount fee_;
@@ -122,7 +120,7 @@ private:
     // JoinSplit where you have the witnesses and anchor
     UniValue perform_joinsplit(
         MergeToAddressJSInfo& info,
-        std::vector<boost::optional<SproutWitness>> witnesses,
+        std::vector<std::optional<SproutWitness>> witnesses,
         uint256 anchor);
 
     void lock_utxos();
@@ -180,7 +178,7 @@ public:
 
     UniValue perform_joinsplit(
         MergeToAddressJSInfo& info,
-        std::vector<boost::optional<SproutWitness>> witnesses,
+        std::vector<std::optional<SproutWitness>> witnesses,
         uint256 anchor)
     {
         return delegate->perform_joinsplit(info, witnesses, anchor);

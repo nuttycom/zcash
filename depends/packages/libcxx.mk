@@ -21,7 +21,7 @@ endef
 
 else
 # For Windows cross-compilation, use the MSYS2 binaries.
-$(package)_download_path=http://repo.msys2.org/mingw/x86_64
+$(package)_download_path=https://repo.msys2.org/mingw/x86_64
 $(package)_download_file=mingw-w64-x86_64-libc++-9.0.1-1-any.pkg.tar.xz
 $(package)_file_name=mingw-w64-x86_64-libcxx-9.0.1-1-any.pkg.tar.xz
 $(package)_sha256_hash=04e77c5d0e3a9efc9cc8ca3b6549af9a9eef6e20d53076295efbdfba76c5f5de
@@ -68,6 +68,7 @@ endef
 define $(package)_stage_cmds
   mkdir -p $($(package)_staging_prefix_dir)/lib && \
   cp $(build_prefix)/lib/libc++.a $($(package)_staging_prefix_dir)/lib && \
-  cp $(build_prefix)/lib/libc++abi.a $($(package)_staging_prefix_dir)/lib
+  if [ -f "$(build_prefix)/lib/libc++abi.a" ]; then cp $(build_prefix)/lib/libc++abi.a $($(package)_staging_prefix_dir)/lib; fi
 endef
+
 endif

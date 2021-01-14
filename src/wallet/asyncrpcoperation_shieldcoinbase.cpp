@@ -18,6 +18,7 @@
 #include "proof_verifier.h"
 #include "rpc/protocol.h"
 #include "rpc/server.h"
+#include "transaction_builder.h"
 #include "timedata.h"
 #include "util.h"
 #include "utilmoneystr.h"
@@ -32,8 +33,10 @@
 #include <array>
 #include <iostream>
 #include <chrono>
+#include <optional>
 #include <thread>
 #include <string>
+#include <variant>
 
 #include <rust/ed25519.h>
 
@@ -196,7 +199,7 @@ bool AsyncRPCOperation_shieldcoinbase::main_impl() {
     LogPrint("zrpc", "%s: spending %s to shield %s with fee %s\n",
             getId(), FormatMoney(targetAmount), FormatMoney(sendAmount), FormatMoney(minersFee));
 
-    return boost::apply_visitor(ShieldToAddress(this, sendAmount), tozaddr_);
+    return std::visit(ShieldToAddress(this, sendAmount), tozaddr_);
 }
 
 bool ShieldToAddress::operator()(const libzcash::SproutPaymentAddress &zaddr) const {
@@ -222,7 +225,7 @@ bool ShieldToAddress::operator()(const libzcash::SproutPaymentAddress &zaddr) co
     info.vjsout.push_back(jso);
     UniValue obj = m_op->perform_joinsplit(info);
 
-    auto txAndResult = SignSendRawTransaction(obj, boost::none, m_op->testmode);
+    auto txAndResult = SignSendRawTransaction(obj, std::nullopt, m_op->testmode);
     m_op->tx_ = txAndResult.first;
     m_op->set_result(txAndResult.second);
     return true;
@@ -250,7 +253,7 @@ bool ShieldToAddress::operator()(const libzcash::SaplingPaymentAddress &zaddr) c
     // Build the transaction
     m_op->tx_ = m_op->builder_.Build().GetTxOrThrow();
 
-    UniValue sendResult = SendTransaction(m_op->tx_, boost::none, m_op->testmode);
+    UniValue sendResult = SendTransaction(m_op->tx_, std::nullopt, m_op->testmode);
     m_op->set_result(sendResult);
 
     return true;
@@ -309,15 +312,16 @@ UniValue AsyncRPCOperation_shieldcoinbase::perform_joinsplit(ShieldCoinbaseJSInf
     uint256 esk; // payment disclosure - secret
 
     assert(mtx.fOverwintered && (mtx.nVersion >= SAPLING_TX_VERSION));
-    JSDescription jsdesc = JSDescription::Randomized(
+    JSDescription jsdesc = JSDescriptionInfo(
             joinSplitPubKey_,
             anchor,
             inputs,
             outputs,
+            info.vpub_old,
+            info.vpub_new
+    ).BuildRandomized(
             inputMap,
             outputMap,
-            info.vpub_old,
-            info.vpub_new,
             !this->testmode,
             &esk); // parameter expects pointer to esk, so pass in address
     {
@@ -365,7 +369,7 @@ UniValue AsyncRPCOperation_shieldcoinbase::perform_joinsplit(ShieldCoinbaseJSInf
         ss2 << ((unsigned char) 0x00);
         ss2 << jsdesc.ephemeralKey;
         ss2 << jsdesc.ciphertexts[0];
-        ss2 << jsdesc.h_sig(joinSplitPubKey_);
+        ss2 << ZCJoinSplit::h_sig(jsdesc.randomSeed, jsdesc.nullifiers, joinSplitPubKey_);
 
         encryptedNote1 = HexStr(ss2.begin(), ss2.end());
     }
@@ -374,7 +378,7 @@ UniValue AsyncRPCOperation_shieldcoinbase::perform_joinsplit(ShieldCoinbaseJSInf
         ss2 << ((unsigned char) 0x01);
         ss2 << jsdesc.ephemeralKey;
         ss2 << jsdesc.ciphertexts[1];
-        ss2 << jsdesc.h_sig(joinSplitPubKey_);
+        ss2 << ZCJoinSplit::h_sig(jsdesc.randomSeed, jsdesc.nullifiers, joinSplitPubKey_);
 
         encryptedNote2 = HexStr(ss2.begin(), ss2.end());
     }

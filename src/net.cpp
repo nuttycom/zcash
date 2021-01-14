@@ -823,7 +823,7 @@ static bool AttemptToEvictConnection(bool fPreferNewConnection) {
     const Consensus::Params& params = Params().GetConsensus();
     auto nextEpoch = NextEpoch(height, params);
     if (nextEpoch) {
-        auto idx = nextEpoch.get();
+        auto idx = nextEpoch.value();
         int nActivationHeight = params.vUpgrades[idx].nActivationHeight;
 
         if (nActivationHeight > 0 &&
@@ -1534,6 +1534,7 @@ bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOu
 
 void ThreadMessageHandler()
 {
+    const CChainParams& chainparams = Params();
     boost::mutex condition_mutex;
     boost::unique_lock<boost::mutex> lock(condition_mutex);
 
@@ -1568,7 +1569,7 @@ void ThreadMessageHandler()
                 TRY_LOCK(pnode->cs_vRecvMsg, lockRecv);
                 if (lockRecv)
                 {
-                    if (!g_signals.ProcessMessages(pnode))
+                    if (!g_signals.ProcessMessages(chainparams, pnode))
                         pnode->CloseSocketDisconnect();
 
                     if (pnode->nSendSize < SendBufferSize())
@@ -1586,7 +1587,7 @@ void ThreadMessageHandler()
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
                 if (lockSend)
-                    g_signals.SendMessages(pnode, pnode == pnodeTrickle || pnode->fWhitelisted);
+                    g_signals.SendMessages(chainparams.GetConsensus(), pnode, pnode == pnodeTrickle || pnode->fWhitelisted);
             }
             boost::this_thread::interruption_point();
         }
@@ -2109,22 +2110,16 @@ CNode::CNode(SOCKET hSocketIn, const CAddress& addrIn, const std::string& addrNa
     fPingQueued = false;
     nMinPingUsecTime = std::numeric_limits<int64_t>::max();
 
-    if (fLogIPs) {
-        span = TracingSpanFields("info", "net", "CNode", "addr", addrName.c_str());
-    } else {
-        span = TracingSpan("info", "net", "CNode");
-    }
-    auto spanGuard = span.Enter();
-
     {
         LOCK(cs_nLastNodeId);
         id = nLastNodeId++;
     }
+    idStr = tfm::format("%d", id);
 
-    if (fLogIPs)
-        LogPrint("net", "Added connection to %s peer=%d\n", addrName, id);
-    else
-        LogPrint("net", "Added connection peer=%d\n", id);
+    ReloadTracingSpan();
+
+    auto spanGuard = span.Enter();
+    LogPrint("net", "Added connection");
 
     // Be shy and don't send version until we hear
     if (hSocket != INVALID_SOCKET && !fInbound)
@@ -2141,6 +2136,18 @@ CNode::~CNode()
         delete pfilter;
 
     GetNodeSignals().FinalizeNode(GetId());
+}
+
+void CNode::ReloadTracingSpan()
+{
+    if (fLogIPs) {
+        span = TracingSpanFields("info", "net", "Peer",
+            "id", idStr.c_str(),
+            "addr", addrName.c_str());
+    } else {
+        span = TracingSpanFields("info", "net", "Peer",
+            "id", idStr.c_str());
+    }
 }
 
 void CNode::AskFor(const CInv& inv)

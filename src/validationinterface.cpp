@@ -189,7 +189,7 @@ void ThreadNotifyWallets(CBlockIndex *pindexLastTip)
                 SyncWithWallets(tx, NULL, pindexLastTip->nHeight);
             }
             // Update cached incremental witnesses
-            GetMainSignals().ChainTip(pindexLastTip, &block, boost::none);
+            GetMainSignals().ChainTip(pindexLastTip, &block, std::nullopt);
 
             // On to the next block!
             pindexLastTip = pindexLastTip->pprev;
@@ -242,7 +242,7 @@ void ThreadNotifyWallets(CBlockIndex *pindexLastTip)
         // Update the notified sequence numbers. We only need this in regtest mode,
         // and should not lock on cs or cs_main here otherwise.
         if (chainParams.NetworkIDString() == "regtest") {
-            SetChainNotifiedSequence(recentlyConflicted.second);
+            SetChainNotifiedSequence(chainParams, recentlyConflicted.second);
             mempool.SetNotifiedSequence(recentlyAdded.second);
         }
     }

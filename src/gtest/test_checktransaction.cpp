@@ -523,15 +523,15 @@ TEST(ChecktransactionTests, BadTxnsInvalidJoinsplitSignature) {
     // during initial block download, for transactions being accepted into the
     // mempool (and thus not mined), DoS ban score should be zero, else 10
     EXPECT_CALL(state, DoS(0, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const CChainParams&) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params&) { return true; });
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const CChainParams&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params&) { return false; });
     // for transactions that have been mined in a block, DoS ban score should
     // always be 100.
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const CChainParams&) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return true; });
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const CChainParams&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return false; });
 }
 
 TEST(ChecktransactionTests, JoinsplitSignatureDetectsOldBranchId) {
@@ -553,7 +553,7 @@ TEST(ChecktransactionTests, JoinsplitSignatureDetectsOldBranchId) {
     // Ensure that the transaction validates against Sapling.
     EXPECT_TRUE(ContextualCheckTransaction(
         tx, state, chainparams, 5, false,
-        [](const CChainParams&) { return false; }));
+        [](const Consensus::Params&) { return false; }));
 
     // Attempt to validate the inputs against Blossom. We should be notified
     // that an old consensus branch ID was used for an input.
@@ -565,7 +565,7 @@ TEST(ChecktransactionTests, JoinsplitSignatureDetectsOldBranchId) {
         false)).Times(1);
     EXPECT_FALSE(ContextualCheckTransaction(
         tx, state, chainparams, 15, false,
-        [](const CChainParams&) { return false; }));
+        [](const Consensus::Params&) { return false; }));
 
     // Attempt to validate the inputs against Heartwood. All we should learn is
     // that the signature is invalid, because we don't check more than one
@@ -575,7 +575,7 @@ TEST(ChecktransactionTests, JoinsplitSignatureDetectsOldBranchId) {
         "bad-txns-invalid-joinsplit-signature", false)).Times(1);
     EXPECT_FALSE(ContextualCheckTransaction(
         tx, state, chainparams, 25, false,
-        [](const CChainParams&) { return false; }));
+        [](const Consensus::Params&) { return false; }));
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UPGRADE_HEARTWOOD, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -615,15 +615,15 @@ TEST(ChecktransactionTests, NonCanonicalEd25519Signature) {
     // during initial block download, for transactions being accepted into the
     // mempool (and thus not mined), DoS ban score should be zero, else 10
     EXPECT_CALL(state, DoS(0, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const CChainParams&) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params&) { return true; });
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const CChainParams&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params&) { return false; });
     // for transactions that have been mined in a block, DoS ban score should
     // always be 100.
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const CChainParams&) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return true; });
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-invalid-joinsplit-signature", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const CChainParams&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return false; });
 }
 
 TEST(ChecktransactionTests, OverwinterConstructors) {
@@ -771,7 +771,7 @@ TEST(ChecktransactionTests, OverwinterExpiryHeight) {
 }
 
 TEST(checktransaction_tests, BlossomExpiryHeight) {
-    const Consensus::Params& params = RegtestActivateBlossom(false, 100);
+    const Consensus::Params& params = RegtestActivateBlossom(false, 100).GetConsensus();
     CMutableTransaction preBlossomMtx = CreateNewContextualCMutableTransaction(params, 99);
     EXPECT_EQ(preBlossomMtx.nExpiryHeight, 100 - 1);
     CMutableTransaction blossomMtx = CreateNewContextualCMutableTransaction(params, 100);
@@ -826,11 +826,13 @@ TEST(ChecktransactionTests, SaplingSproutInputSumsTooLarge) {
         std::array<size_t, ZC_NUM_JS_INPUTS> inputMap;
         std::array<size_t, ZC_NUM_JS_OUTPUTS> outputMap;
 
-        auto jsdesc = JSDescription::Randomized(
+        auto jsdesc = JSDescriptionInfo(
             joinSplitPubKey, rt,
             inputs, outputs,
+            0, 0
+        ).BuildRandomized(
             inputMap, outputMap,
-            0, 0, false);
+            false);
 
         mtx.vJoinSplit.push_back(jsdesc);
     }
@@ -923,15 +925,15 @@ TEST(ChecktransactionTests, OverwinterNotActive) {
     // during initial block download, for transactions being accepted into the
     // mempool (and thus not mined), DoS ban score should be zero, else 10
     EXPECT_CALL(state, DoS(0, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const CChainParams&) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params&) { return true; });
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const CChainParams&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, false, [](const Consensus::Params&) { return false; });
     // for transactions that have been mined in a block, DoS ban score should
     // always be 100.
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const CChainParams&) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return true; });
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false)).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const CChainParams&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, true, [](const Consensus::Params&) { return false; });
 }
 
 // This tests a transaction without the fOverwintered flag set, against the Overwinter consensus rule set.
@@ -1134,7 +1136,7 @@ TEST(ChecktransactionTests, HeartwoodAcceptsShieldedCoinbase) {
     auto output = OutputDescriptionInfo(ovk, note, {{0xF6}});
 
     auto ctx = librustzcash_sapling_proving_ctx_init();
-    auto odesc = output.Build(ctx).get();
+    auto odesc = output.Build(ctx).value();
     librustzcash_sapling_proving_ctx_free(ctx);
 
     CMutableTransaction mtx = GetValidTransaction();
@@ -1240,7 +1242,7 @@ TEST(ChecktransactionTests, HeartwoodEnforcesSaplingRulesOnShieldedCoinbase) {
 
     // Add a Sapling output.
     auto ctx = librustzcash_sapling_proving_ctx_init();
-    auto odesc = output.Build(ctx).get();
+    auto odesc = output.Build(ctx).value();
     librustzcash_sapling_proving_ctx_free(ctx);
     mtx.vShieldedOutput.push_back(odesc);
 
@@ -1283,7 +1285,6 @@ TEST(ChecktransactionTests, HeartwoodEnforcesSaplingRulesOnShieldedCoinbase) {
 
 
 TEST(ChecktransactionTests, CanopyRejectsNonzeroVPubOld) {
-
     RegtestActivateSapling();
 
     CMutableTransaction mtx = GetValidTransaction(NetworkUpgradeInfo[Consensus::UPGRADE_SAPLING].nBranchId);

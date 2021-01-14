@@ -8,7 +8,6 @@
 #endif
 
 #include "init.h"
-#include "crypto/common.h"
 #include "addrman.h"
 #include "amount.h"
 #include "checkpoints.h"
@@ -59,6 +58,7 @@
 #include <boost/bind/bind.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/thread.hpp>
+#include <sodium.h>
 
 #if ENABLE_ZMQ
 #include "zmq/zmqnotificationinterface.h"
@@ -583,9 +583,8 @@ void CleanupBlockRevFiles()
     }
 }
 
-void ThreadImport(std::vector<fs::path> vImportFiles)
+void ThreadImport(std::vector<fs::path> vImportFiles, const CChainParams& chainparams)
 {
-    const CChainParams& chainparams = Params();
     RenameThread("zcash-loadblk");
     // -reindex
     if (fReindex) {
@@ -829,6 +828,20 @@ void InitLogging()
     LogPrintf("Zcash version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
 }
 
+[[noreturn]] static void new_handler_terminate()
+{
+    // Rather than throwing std::bad-alloc if allocation fails, terminate
+    // immediately to (try to) avoid chain corruption.
+    // Since LogPrintf may itself allocate memory, set the handler directly
+    // to terminate first.
+    std::set_new_handler(std::terminate);
+    fputs("Error: Out of memory. Terminating.\n", stderr);
+    LogPrintf("Error: Out of memory. Terminating.\n");
+
+    // The log was successful, terminate now.
+    std::terminate();
+};
+
 /** Initialize bitcoin.
  *  @pre Parameters should be parsed and config file should be read.
  */
@@ -900,7 +913,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // Set this early so that experimental features are correctly enabled/disabled
     auto err = InitExperimentalMode();
     if (err) {
-        return InitError(err.get());
+        return InitError(err.value());
     }
 
     // Make sure enough file descriptors are available
@@ -1054,7 +1067,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             // Try a Sapling address
             auto zaddr = keyIO.DecodePaymentAddress(mapArgs["-mineraddress"]);
             if (!IsValidPaymentAddress(zaddr) ||
-                boost::get<libzcash::SaplingPaymentAddress>(&zaddr) == nullptr)
+                std::get_if<libzcash::SaplingPaymentAddress>(&zaddr) == nullptr)
             {
                 return InitError(strprintf(
                     _("Invalid address for -mineraddress=<addr>: '%s' (must be a Sapling or transparent address)"),
@@ -1066,7 +1079,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     if (!mapMultiArgs["-nuparams"].empty()) {
         // Allow overriding network upgrade parameters for testing
-        if (Params().NetworkIDString() != "regtest") {
+        if (chainparams.NetworkIDString() != "regtest") {
             return InitError("Network upgrade parameters may only be overridden on regtest.");
         }
         const vector<string>& deployments = mapMultiArgs["-nuparams"];
@@ -1098,14 +1111,14 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
     if (mapArgs.count("-nurejectoldversions")) {
-        if (Params().NetworkIDString() != "regtest") {
+        if (chainparams.NetworkIDString() != "regtest") {
             return InitError("-nurejectoldversions may only be set on regtest.");
         }
     }
 
     if (!mapMultiArgs["-fundingstream"].empty()) {
         // Allow overriding network upgrade parameters for testing
-        if (Params().NetworkIDString() != "regtest") {
+        if (chainparams.NetworkIDString() != "regtest") {
             return InitError("Funding stream parameters may only be overridden on regtest.");
         }
         const std::vector<std::string>& streams = mapMultiArgs["-fundingstream"];
@@ -1136,7 +1149,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
             boost::split(vStreamAddrs, vStreamParams[3], boost::is_any_of(","));
 
             auto fs = Consensus::FundingStream::ParseFundingStream(
-                    Params().GetConsensus(), Params(), nStartHeight, nEndHeight, vStreamAddrs);
+                    chainparams.GetConsensus(), chainparams, nStartHeight, nEndHeight, vStreamAddrs);
 
             UpdateFundingStreamParameters((Consensus::FundingStreamIndex) nFundingStreamId, fs);
         }
@@ -1145,7 +1158,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
     // ********************************************************* Step 4: application initialization: dir lock, daemonize, pidfile, debug log
 
     // Initialize libsodium
-    if (init_and_check_sodium() == -1) {
+    if (sodium_init() == -1) {
         return false;
     }
 
@@ -1575,11 +1588,11 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         if (pwalletMain) {
             CTxDestination addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
             if (IsValidDestination(addr)) {
-                CKeyID keyID = boost::get<CKeyID>(addr);
+                CKeyID keyID = std::get<CKeyID>(addr);
                 minerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
             } else {
                 auto zaddr = keyIO.DecodePaymentAddress(mapArgs["-mineraddress"]);
-                minerAddressInLocalWallet = boost::apply_visitor(
+                minerAddressInLocalWallet = std::visit(
                     HaveSpendingKeyForPaymentAddress(pwalletMain), zaddr);
             }
         }
@@ -1658,7 +1671,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         for (const std::string& strFile : mapMultiArgs["-loadblock"])
             vImportFiles.push_back(strFile);
     }
-    threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles));
+    threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles, chainparams));
 
     // Wait for genesis block to be processed
     bool fHaveGenesis = false;
@@ -1707,6 +1720,7 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     // Monitor the chain every minute, and alert if we get blocks much quicker or slower than expected.
     CScheduler::Function f = boost::bind(&PartitionCheck, &IsInitialBlockDownload,
+                                         boost::cref(chainparams.GetConsensus()),
                                          boost::ref(cs_main), boost::cref(pindexBestHeader));
     scheduler.scheduleEvery(f, 60);
 

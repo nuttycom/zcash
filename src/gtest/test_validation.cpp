@@ -9,6 +9,8 @@
 #include "tze.cpp"
 #include "utiltest.h"
 
+#include <optional>
+
 extern bool ReceivedBlockTransactions(
     const CBlock &block,
     CValidationState& state,
@@ -16,7 +18,7 @@ extern bool ReceivedBlockTransactions(
     CBlockIndex *pindexNew,
     const CDiskBlockPos& pos);
 
-void ExpectOptionalAmount(CAmount expected, boost::optional<CAmount> actual) {
+void ExpectOptionalAmount(CAmount expected, std::optional<CAmount> actual) {
     EXPECT_TRUE((bool)actual);
     if (actual) {
         EXPECT_EQ(expected, *actual);
@@ -34,7 +36,7 @@ struct ValidationFakeCoin {
 // Fake a view that optionally contains a single coin.
 class ValidationFakeCoinsViewDB : public CCoinsView {
 private:
-    boost::optional<ValidationFakeCoin> tCoin;
+    std::optional<ValidationFakeCoin> tCoin;
 
 public:
     ValidationFakeCoinsViewDB() {}
@@ -58,17 +60,17 @@ public:
     }
 
     bool GetCoins(const uint256 &txid, CCoins &coins) const {
-        if (tCoin && txid == tCoin.get().txid) {
+        if (tCoin && txid == tCoin.value().txid) {
             CCoins newCoins;
-            if (tCoin.get().txout) {
+            if (tCoin.value().txout) {
                 newCoins.vout.resize(1);
-                newCoins.vout[0] = tCoin.get().txout.get();
+                newCoins.vout[0] = tCoin.value().txout.value();
             }
-            if (tCoin.get().tzeout) {
+            if (tCoin.value().tzeout) {
                 newCoins.vtzeout.resize(1);
-                newCoins.vtzeout[0] = std::make_pair(tCoin.get().tzeout.get(), UNSPENT);
+                newCoins.vtzeout[0] = std::make_pair(tCoin.value().tzeout.value(), UNSPENT);
             }
-            newCoins.nHeight = tCoin.get().nHeight;
+            newCoins.nHeight = tCoin.value().nHeight;
             coins.swap(newCoins);
             return true;
         } else {
@@ -77,7 +79,7 @@ public:
     }
 
     bool HaveCoins(const uint256 &txid) const {
-        if (tCoin && txid == tCoin.get().txid) {
+        if (tCoin && txid == tCoin.value().txid) {
             return true;
         } else {
             return false;
@@ -86,7 +88,7 @@ public:
 
     uint256 GetBestBlock() const {
         if (tCoin) {
-            return tCoin.get().blockHash;
+            return tCoin.value().blockHash;
         } else {
             uint256 a;
             return a;

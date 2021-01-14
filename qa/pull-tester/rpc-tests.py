@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
-# file COPYING or http://www.opensource.org/licenses/mit-license.php.
+# file COPYING or https://www.opensource.org/licenses/mit-license.php .
 """
 rpc-tests.py - run regression test suite
 
@@ -210,6 +210,10 @@ def main():
         # in the ALL_SCRIPTS list. Accept the name with or without .py extension.
         test_list = [t for t in ALL_SCRIPTS if
                 (t in tests or re.sub(".py$", "", t) in tests)]
+
+        print("Running individually selected tests: ")
+        for t in test_list:
+            print("\t" + t)
     else:
         # No individual tests have been specified. Run base tests, and
         # optionally ZMQ tests and extended tests.

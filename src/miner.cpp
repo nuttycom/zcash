@@ -111,12 +111,18 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
     pblock->nTime = nTime;
 
     // Updating time can change work required on testnet:
-    if (consensusParams.nPowAllowMinDifficultyBlocksAfterHeight != boost::none) {
+    if (consensusParams.nPowAllowMinDifficultyBlocksAfterHeight != std::nullopt) {
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, consensusParams);
     }
 }
 
-class AddFundingStreamValueToTx : public boost::static_visitor<bool>
+bool IsShieldedMinerAddress(const MinerAddress& minerAddr) {
+    return !(
+        std::holds_alternative<InvalidMinerAddress>(minerAddr) ||
+        std::holds_alternative<boost::shared_ptr<CReserveScript>>(minerAddr));
+}
+
+class AddFundingStreamValueToTx
 {
 private:
     CMutableTransaction &mtx;
@@ -137,7 +143,7 @@ public:
 
         auto odesc = output.Build(ctx);
         if (odesc) {
-            mtx.vShieldedOutput.push_back(odesc.get());
+            mtx.vShieldedOutput.push_back(odesc.value());
             mtx.valueBalance -= fundingStreamValue;
             return true;
         } else {
@@ -152,7 +158,7 @@ public:
 };
 
 
-class AddOutputsToCoinbaseTxAndSign : public boost::static_visitor<>
+class AddOutputsToCoinbaseTxAndSign
 {
 private:
     CMutableTransaction &mtx;
@@ -188,7 +194,7 @@ public:
 
                 for (Consensus::FundingStreamElement fselem : fundingStreamElements) {
                     miner_reward -= fselem.second;
-                    bool added = boost::apply_visitor(AddFundingStreamValueToTx(mtx, ctx, fselem.second, GetZip212Flag()), fselem.first);
+                    bool added = std::visit(AddFundingStreamValueToTx(mtx, ctx, fselem.second, GetZip212Flag()), fselem.first);
                     if (!added) {
                         librustzcash_sapling_proving_ctx_free(ctx);
                         throw new std::runtime_error("Failed to add funding stream output.");
@@ -254,7 +260,7 @@ public:
             librustzcash_sapling_proving_ctx_free(ctx);
             throw new std::runtime_error("Failed to create shielded output for miner");
         }
-        mtx.vShieldedOutput.push_back(odesc.get());
+        mtx.vShieldedOutput.push_back(odesc.value());
 
         ComputeBindingSig(ctx);
 
@@ -282,7 +288,24 @@ public:
     }
 };
 
-CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddress& minerAddress)
+CMutableTransaction CreateCoinbaseTransaction(const CChainParams& chainparams, CAmount nFees, const MinerAddress& minerAddress, int nHeight)
+{
+        CMutableTransaction mtx = CreateNewContextualCMutableTransaction(chainparams.GetConsensus(), nHeight);
+        mtx.vin.resize(1);
+        mtx.vin[0].prevout.SetNull();
+        // Set to 0 so expiry height does not apply to coinbase txs
+        mtx.nExpiryHeight = 0;
+
+        // Add outputs and sign
+        std::visit(
+            AddOutputsToCoinbaseTxAndSign(mtx, chainparams, nHeight, nFees),
+            minerAddress);
+
+        mtx.vin[0].scriptSig = CScript() << nHeight << OP_0;
+        return mtx;
+}
+
+CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddress& minerAddress, const std::optional<CMutableTransaction>& next_cb_mtx)
 {
     // Create new block
     std::unique_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
@@ -338,74 +361,35 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
         // This vector will be sorted into a priority queue:
         vector<TxPriority> vecPriority;
         vecPriority.reserve(mempool.mapTx.size());
-        for (CTxMemPool::indexed_transaction_set::iterator mi = mempool.mapTx.begin();
-             mi != mempool.mapTx.end(); ++mi)
-        {
-            const CTransaction& tx = mi->GetTx();
 
-            int64_t nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
-                                    ? nMedianTimePast
-                                    : pblock->GetBlockTime();
-
-            if (tx.IsCoinBase() || !IsFinalTx(tx, nHeight, nLockTimeCutoff) || IsExpiredTx(tx, nHeight))
-                continue;
-
-            COrphan* porphan = NULL;
-            double dPriority = 0;
-            CAmount nTotalIn = 0;
-            bool fMissingInputs = false;
-            for (const CTxIn& txin : tx.vin)
+        // If we're given a coinbase tx, it's been precomputed, its fees are zero,
+        // so we can't include any mempool transactions; this will be an empty block.
+        if (!next_cb_mtx) {
+            for (CTxMemPool::indexed_transaction_set::iterator mi = mempool.mapTx.begin();
+                mi != mempool.mapTx.end(); ++mi)
             {
-                // Read prev transaction
-                if (!view.HaveCoins(txin.prevout.hash))
-                {
-                    // This should never happen; all transactions in the memory
-                    // pool should connect to either transactions in the chain
-                    // or other transactions in the memory pool.
-                    if (!mempool.mapTx.count(txin.prevout.hash))
-                    {
-                        LogPrintf("ERROR: mempool transaction missing input\n");
-                        if (fDebug) assert("mempool transaction missing input" == 0);
-                        fMissingInputs = true;
-                        if (porphan)
-                            vOrphan.pop_back();
-                        break;
-                    }
+                const CTransaction& tx = mi->GetTx();
 
-                    // Has to wait for dependencies
-                    if (!porphan)
-                    {
-                        // Use list for automatic deletion
-                        vOrphan.push_back(COrphan(&tx));
-                        porphan = &vOrphan.back();
-                    }
-                    mapDependers[txin.prevout.hash].push_back(porphan);
-                    porphan->setDependsOn.insert(txin.prevout.hash);
-                    nTotalIn += mempool.mapTx.find(txin.prevout.hash)->GetTx().vout[txin.prevout.n].nValue;
+                int64_t nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
+                                        ? nMedianTimePast
+                                        : pblock->GetBlockTime();
+
+                if (tx.IsCoinBase() || !IsFinalTx(tx, nHeight, nLockTimeCutoff) || IsExpiredTx(tx, nHeight))
                     continue;
-                }
-                const CCoins* coins = view.AccessCoins(txin.prevout.hash);
-                assert(coins);
 
-                CAmount nValueIn = coins->vout[txin.prevout.n].nValue;
-                nTotalIn += nValueIn;
-
-                int nConf = nHeight - coins->nHeight;
-
-                dPriority += (double)nValueIn * nConf;
-            }
-
-            // Add TZE input value
-            if (chainparams.GetConsensus().FeatureActive(nHeight, Consensus::ZIP222_TZE)) {
-                BOOST_FOREACH(const CTzeIn& tzein, tx.vtzein)
+                COrphan* porphan = NULL;
+                double dPriority = 0;
+                CAmount nTotalIn = 0;
+                bool fMissingInputs = false;
+                for (const CTxIn& txin : tx.vin)
                 {
                     // Read prev transaction
-                    if (!view.HaveCoins(tzein.prevout.hash))
+                    if (!view.HaveCoins(txin.prevout.hash))
                     {
                         // This should never happen; all transactions in the memory
                         // pool should connect to either transactions in the chain
                         // or other transactions in the memory pool.
-                        if (!mempool.mapTx.count(tzein.prevout.hash))
+                        if (!mempool.mapTx.count(txin.prevout.hash))
                         {
                             LogPrintf("ERROR: mempool transaction missing input\n");
                             if (fDebug) assert("mempool transaction missing input" == 0);
@@ -422,40 +406,84 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
                             vOrphan.push_back(COrphan(&tx));
                             porphan = &vOrphan.back();
                         }
-                        mapDependers[tzein.prevout.hash].push_back(porphan);
-                        porphan->setDependsOn.insert(tzein.prevout.hash);
-                        nTotalIn += mempool.mapTx.find(tzein.prevout.hash)->GetTx().vtzeout[tzein.prevout.n].nValue;
+                        mapDependers[txin.prevout.hash].push_back(porphan);
+                        porphan->setDependsOn.insert(txin.prevout.hash);
+                        nTotalIn += mempool.mapTx.find(txin.prevout.hash)->GetTx().vout[txin.prevout.n].nValue;
                         continue;
                     }
-
-                    const CCoins* coins = view.AccessCoins(tzein.prevout.hash);
+                    const CCoins* coins = view.AccessCoins(txin.prevout.hash);
                     assert(coins);
 
-                    nTotalIn += coins->vtzeout[tzein.prevout.n].first.nValue;
+                    CAmount nValueIn = coins->vout[txin.prevout.n].nValue;
+                    nTotalIn += nValueIn;
+
+                    int nConf = nHeight - coins->nHeight;
+
+                    dPriority += (double)nValueIn * nConf;
                 }
+
+                // Add TZE input value
+                if (chainparams.GetConsensus().FeatureActive(nHeight, Consensus::ZIP222_TZE)) {
+                    BOOST_FOREACH(const CTzeIn& tzein, tx.vtzein)
+                    {
+                        // Read prev transaction
+                        if (!view.HaveCoins(tzein.prevout.hash))
+                        {
+                            // This should never happen; all transactions in the memory
+                            // pool should connect to either transactions in the chain
+                            // or other transactions in the memory pool.
+                            if (!mempool.mapTx.count(tzein.prevout.hash))
+                            {
+                                LogPrintf("ERROR: mempool transaction missing input\n");
+                                if (fDebug) assert("mempool transaction missing input" == 0);
+                                fMissingInputs = true;
+                                if (porphan)
+                                    vOrphan.pop_back();
+                                break;
+                            }
+
+                            // Has to wait for dependencies
+                            if (!porphan)
+                            {
+                                // Use list for automatic deletion
+                                vOrphan.push_back(COrphan(&tx));
+                                porphan = &vOrphan.back();
+                            }
+                            mapDependers[tzein.prevout.hash].push_back(porphan);
+                            porphan->setDependsOn.insert(tzein.prevout.hash);
+                            nTotalIn += mempool.mapTx.find(tzein.prevout.hash)->GetTx().vtzeout[tzein.prevout.n].nValue;
+                            continue;
+                        }
+
+                        const CCoins* coins = view.AccessCoins(tzein.prevout.hash);
+                        assert(coins);
+
+                        nTotalIn += coins->vtzeout[tzein.prevout.n].first.nValue;
+                    }
+                }
+
+                // Add shielded input value
+                nTotalIn += tx.GetShieldedValueIn();
+
+                if (fMissingInputs) continue;
+
+                // Priority is sum(valuein * age) / modified_txsize
+                unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+                dPriority = tx.ComputePriority(dPriority, nTxSize);
+
+                uint256 hash = tx.GetHash();
+                mempool.ApplyDeltas(hash, dPriority, nTotalIn);
+
+                CFeeRate feeRate(nTotalIn-tx.GetValueOut(), nTxSize);
+
+                if (porphan)
+                {
+                    porphan->dPriority = dPriority;
+                    porphan->feeRate = feeRate;
+                }
+                else
+                    vecPriority.push_back(TxPriority(dPriority, feeRate, &(mi->GetTx())));
             }
-
-            // Add shielded input value
-            nTotalIn += tx.GetShieldedValueIn();
-
-            if (fMissingInputs) continue;
-
-            // Priority is sum(valuein * age) / modified_txsize
-            unsigned int nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
-            dPriority = tx.ComputePriority(dPriority, nTxSize);
-
-            uint256 hash = tx.GetHash();
-            mempool.ApplyDeltas(hash, dPriority, nTotalIn);
-
-            CFeeRate feeRate(nTotalIn-tx.GetValueOut(), nTxSize);
-
-            if (porphan)
-            {
-                porphan->dPriority = dPriority;
-                porphan->feeRate = feeRate;
-            }
-            else
-                vecPriority.push_back(TxPriority(dPriority, feeRate, &(mi->GetTx())));
         }
 
         // Collect transactions into block
@@ -610,20 +638,11 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const MinerAddre
         LogPrintf("CreateNewBlock(): total size %u\n", nBlockSize);
 
         // Create coinbase tx
-        CMutableTransaction txNew = CreateNewContextualCMutableTransaction(chainparams.GetConsensus(), nHeight);
-        txNew.vin.resize(1);
-        txNew.vin[0].prevout.SetNull();
-        // Set to 0 so expiry height does not apply to coinbase txs
-        txNew.nExpiryHeight = 0;
-
-        // Add outputs and sign
-        boost::apply_visitor(
-            AddOutputsToCoinbaseTxAndSign(txNew, chainparams, nHeight, nFees),
-            minerAddress);
-
-        txNew.vin[0].scriptSig = CScript() << nHeight << OP_0;
-
-        pblock->vtx[0] = txNew;
+        if (next_cb_mtx) {
+            pblock->vtx[0] = *next_cb_mtx;
+        } else {
+            pblock->vtx[0] = CreateCoinbaseTransaction(chainparams, nFees, minerAddress, nHeight);
+        }
         pblocktemplate->vTxFees[0] = -nFees;
 
         // Update the Sapling commitment tree.
@@ -690,7 +709,7 @@ void GetMinerAddress(MinerAddress &minerAddress)
     CTxDestination addr = keyIO.DecodeDestination(mAddrArg);
     if (IsValidDestination(addr)) {
         boost::shared_ptr<MinerAddressScript> mAddr(new MinerAddressScript());
-        CKeyID keyID = boost::get<CKeyID>(addr);
+        CKeyID keyID = std::get<CKeyID>(addr);
 
         mAddr->reserveScript = CScript() << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
         minerAddress = mAddr;
@@ -698,8 +717,8 @@ void GetMinerAddress(MinerAddress &minerAddress)
         // Try a Sapling address
         auto zaddr = keyIO.DecodePaymentAddress(mAddrArg);
         if (IsValidPaymentAddress(zaddr)) {
-            if (boost::get<libzcash::SaplingPaymentAddress>(&zaddr) != nullptr) {
-                minerAddress = boost::get<libzcash::SaplingPaymentAddress>(zaddr);
+            if (std::get_if<libzcash::SaplingPaymentAddress>(&zaddr) != nullptr) {
+                minerAddress = std::get<libzcash::SaplingPaymentAddress>(zaddr);
             }
         }
     }
@@ -780,7 +799,7 @@ void static BitcoinMiner(const CChainParams& chainparams)
 
     try {
         // Throw an error if no address valid for mining was provided.
-        if (!boost::apply_visitor(IsValidMinerAddress(), minerAddress)) {
+        if (!std::visit(IsValidMinerAddress(), minerAddress)) {
             throw std::runtime_error("No miner address available (mining requires a wallet or -mineraddress)");
         }
 
@@ -795,7 +814,7 @@ void static BitcoinMiner(const CChainParams& chainparams)
                         LOCK(cs_vNodes);
                         fvNodesEmpty = vNodes.empty();
                     }
-                    if (!fvNodesEmpty && !IsInitialBlockDownload(chainparams))
+                    if (!fvNodesEmpty && !IsInitialBlockDownload(chainparams.GetConsensus()))
                         break;
                     MilliSleep(1000);
                 } while (true);
@@ -875,7 +894,7 @@ void static BitcoinMiner(const CChainParams& chainparams)
                         cancelSolver = false;
                     }
                     SetThreadPriority(THREAD_PRIORITY_LOWEST);
-                    boost::apply_visitor(KeepMinerAddress(), minerAddress);
+                    std::visit(KeepMinerAddress(), minerAddress);
 
                     // In regression test mode, stop mining after a block is found.
                     if (chainparams.MineBlocksOnDemand()) {
@@ -954,7 +973,7 @@ void static BitcoinMiner(const CChainParams& chainparams)
                 // Update nNonce and nTime
                 pblock->nNonce = ArithToUint256(UintToArith256(pblock->nNonce) + 1);
                 UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-                if (chainparams.GetConsensus().nPowAllowMinDifficultyBlocksAfterHeight != boost::none)
+                if (chainparams.GetConsensus().nPowAllowMinDifficultyBlocksAfterHeight != std::nullopt)
                 {
                     // Changing pblock->nTime can change work required on testnet:
                     hashTarget.SetCompact(pblock->nBits);

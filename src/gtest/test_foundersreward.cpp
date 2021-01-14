@@ -105,8 +105,8 @@ void checkNumberOfUniqueAddresses(int nUnique) {
 int GetMaxFundingStreamHeight(const Consensus::Params& params) {
     int result = 0;
     for (auto fs : params.vFundingStreams) {
-        if (fs && result < fs.get().GetEndHeight() - 1) {
-            result = fs.get().GetEndHeight() - 1;
+        if (fs && result < fs.value().GetEndHeight() - 1) {
+            result = fs.value().GetEndHeight() - 1;
         }
     }
 
@@ -141,7 +141,7 @@ TEST(FoundersRewardTest, General) {
 
 TEST(FoundersRewardTest, RegtestGetLastBlockBlossom) {
     int blossomActivationHeight = Consensus::PRE_BLOSSOM_REGTEST_HALVING_INTERVAL / 2; // = 75
-    auto params = RegtestActivateBlossom(false, blossomActivationHeight);
+    auto params = RegtestActivateBlossom(false, blossomActivationHeight).GetConsensus();
     int lastFRHeight = params.GetLastFoundersRewardBlockHeight(blossomActivationHeight);
     EXPECT_EQ(0, params.Halving(lastFRHeight));
     EXPECT_EQ(1, params.Halving(lastFRHeight + 1));

@@ -22,6 +22,7 @@
 
 #include <univalue.h>
 
+#include <optional>
 #include <regex>
 
 using namespace std;
@@ -54,7 +55,7 @@ double GetDifficultyINTERNAL(const CBlockIndex* blockindex, bool networkDifficul
     int nShiftAmount = (powLimit >> 24) & 0xff;
 
     double dDiff =
-        (double)(powLimit & 0x00ffffff) / 
+        (double)(powLimit & 0x00ffffff) /
         (double)(bits & 0x00ffffff);
 
     while (nShift < nShiftAmount)
@@ -83,8 +84,8 @@ double GetNetworkDifficulty(const CBlockIndex* blockindex)
 
 static UniValue ValuePoolDesc(
     const std::string &name,
-    const boost::optional<CAmount> chainValue,
-    const boost::optional<CAmount> valueDelta)
+    const std::optional<CAmount> chainValue,
+    const std::optional<CAmount> valueDelta)
 {
     UniValue rv(UniValue::VOBJ);
     rv.pushKV("id", name);
@@ -1039,7 +1040,7 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("chain",                 Params().NetworkIDString());
     obj.pushKV("blocks",                (int)chainActive.Height());
-    obj.pushKV("initial_block_download_complete", !IsInitialBlockDownload(Params()));
+    obj.pushKV("initial_block_download_complete", !IsInitialBlockDownload(Params().GetConsensus()));
     obj.pushKV("headers",               pindexBestHeader ? pindexBestHeader->nHeight : -1);
     obj.pushKV("bestblockhash",         chainActive.Tip()->GetBlockHash().GetHex());
     obj.pushKV("difficulty",            (double)GetNetworkDifficulty());
@@ -1048,7 +1049,7 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
     obj.pushKV("pruned",                fPruneMode);
     obj.pushKV("size_on_disk",          CalculateCurrentUsage());
 
-    if (IsInitialBlockDownload(Params()))
+    if (IsInitialBlockDownload(Params().GetConsensus()))
         obj.pushKV("estimatedheight",       EstimateNetHeight(Params().GetConsensus(), (int)chainActive.Height(), chainActive.Tip()->GetMedianTimePast()));
     else
         obj.pushKV("estimatedheight",       (int)chainActive.Height());
@@ -1059,11 +1060,13 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
 
     CBlockIndex* tip = chainActive.Tip();
     UniValue valuePools(UniValue::VARR);
-    valuePools.push_back(ValuePoolDesc("sprout", tip->nChainSproutValue, boost::none));
-    valuePools.push_back(ValuePoolDesc("sapling", tip->nChainSaplingValue, boost::none));
+    valuePools.push_back(ValuePoolDesc("sprout", tip->nChainSproutValue, std::nullopt));
+    valuePools.push_back(ValuePoolDesc("sapling", tip->nChainSaplingValue, std::nullopt));
     obj.pushKV("valuePools",            valuePools);
 
-    const Consensus::Params& consensusParams = Params().GetConsensus();
+    const CChainParams& chainparams = Params();
+    const Consensus::Params& consensusParams = chainparams.GetConsensus();
+
     UniValue softforks(UniValue::VARR);
     softforks.push_back(SoftForkDesc("bip34", 2, tip, consensusParams));
     softforks.push_back(SoftForkDesc("bip66", 3, tip, consensusParams));
@@ -1091,7 +1094,7 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
     }
 
     if (Params().NetworkIDString() == "regtest") {
-        obj.pushKV("fullyNotified", ChainIsFullyNotified());
+        obj.pushKV("fullyNotified", ChainIsFullyNotified(chainparams));
     }
 
     return obj;
@@ -1440,7 +1443,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "verifychain",            &verifychain,            true  },
 
     // insightexplorer
-    { "blockchain",         "getblockdeltas",         &getblockdeltas,         false },    
+    { "blockchain",         "getblockdeltas",         &getblockdeltas,         false },
     { "blockchain",         "getblockhashes",         &getblockhashes,         true  },
 
     /* Not shown in help */

@@ -14,10 +14,11 @@
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 
-#include <boost/optional.hpp>
 #include <boost/range/irange.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/synchronized_value.hpp>
+
+#include <optional>
 #include <string>
 #ifdef WIN32
 #include <io.h>
@@ -275,13 +276,13 @@ std::string DisplayHashRate(double value)
     return strprintf(_("%.3f TSol/s"), value / coef);
 }
 
-boost::optional<int64_t> SecondsLeftToNextEpoch(const Consensus::Params& params, int currentHeight)
+std::optional<int64_t> SecondsLeftToNextEpoch(const Consensus::Params& params, int currentHeight)
 {
     auto nextHeight = NextActivationHeight(currentHeight, params);
     if (nextHeight) {
-        return (nextHeight.get() - currentHeight) * params.PoWTargetSpacing(nextHeight.get() - 1);
+        return (nextHeight.value() - currentHeight) * params.PoWTargetSpacing(nextHeight.value() - 1);
     } else {
-        return boost::none;
+        return std::nullopt;
     }
 }
 
@@ -330,7 +331,7 @@ int printStats(MetricsStats stats, bool isScreen, bool mining)
     const Consensus::Params& params = Params().GetConsensus();
     auto localsolps = GetLocalSolPS();
 
-    if (IsInitialBlockDownload(Params())) {
+    if (IsInitialBlockDownload(Params().GetConsensus())) {
         if (fReindex) {
             int downloadPercent = nSizeReindexed * 100 / nFullSizeToReindex;
             std::cout << "      " << _("Reindexing blocks") << " | "
@@ -418,7 +419,7 @@ int printMiningStatus(bool mining)
             }
             if (fvNodesEmpty) {
                 std::cout << _("Mining is paused while waiting for connections.") << std::endl;
-            } else if (IsInitialBlockDownload(Params())) {
+            } else if (IsInitialBlockDownload(Params().GetConsensus())) {
                 std::cout << _("Mining is paused while downloading blocks.") << std::endl;
             } else {
                 std::cout << _("Mining is paused (a JoinSplit may be in progress).") << std::endl;
@@ -641,7 +642,7 @@ void ThreadShowMetricsScreen()
         }
 
         // Lock and fetch stats before erasing the screen, in case we block.
-        boost::optional<MetricsStats> metricsStats;
+        std::optional<MetricsStats> metricsStats;
         if (loaded) {
             metricsStats = loadStats();
         }

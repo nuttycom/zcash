@@ -23,6 +23,7 @@
 #include "rpc/server.h"
 #include "script/sign.h"
 #include "streams.h"
+#include "transaction_builder.h"
 #include "txdb.h"
 #include "utiltest.h"
 #include "wallet/wallet.h"
@@ -100,15 +101,17 @@ double benchmark_create_joinsplit()
 
     /* Get the anchor of an empty commitment tree. */
     uint256 anchor = SproutMerkleTree().root();
+    std::array<libzcash::JSInput, ZC_NUM_JS_INPUTS> inputs({JSInput(), JSInput()});
+    std::array<libzcash::JSOutput, ZC_NUM_JS_OUTPUTS> outputs({JSOutput(), JSOutput()});
 
     struct timeval tv_start;
     timer_start(tv_start);
-    JSDescription jsdesc(joinSplitPubKey,
+    auto jsdesc = JSDescriptionInfo(joinSplitPubKey,
                          anchor,
-                         {JSInput(), JSInput()},
-                         {JSOutput(), JSOutput()},
+                         inputs,
+                         outputs,
                          0,
-                         0);
+                         0).BuildDeterministic();
     double ret = timer_stop(tv_start);
 
     auto verifier = ProofVerifier::Strict();
@@ -374,7 +377,7 @@ CWalletTx CreateSaplingTxWithNoteData(const Consensus::Params& consensusParams,
     auto wtx = GetValidSaplingReceive(consensusParams, keyStore, sk, 10);
     auto testNote = GetTestSaplingNote(sk.DefaultAddress(), 10);
     auto fvk = sk.expsk.full_viewing_key();
-    auto nullifier = testNote.note.nullifier(fvk, testNote.tree.witness().position()).get();
+    auto nullifier = testNote.note.nullifier(fvk, testNote.tree.witness().position()).value();
 
     mapSaplingNoteData_t noteDataMap;
     SaplingOutPoint outPoint {wtx.GetHash(), 0};
@@ -596,7 +599,7 @@ double benchmark_create_sapling_spend()
     SaplingNote note(address, GetRand(MAX_MONEY), libzcash::Zip212Enabled::BeforeZip212);
     SaplingMerkleTree tree;
     auto maybe_cmu = note.cmu();
-    tree.append(maybe_cmu.get());
+    tree.append(maybe_cmu.value());
     auto anchor = tree.root();
     auto witness = tree.witness();
     auto maybe_nf = note.nullifier(expsk.full_viewing_key(), witness.position());
@@ -654,7 +657,7 @@ double benchmark_create_sapling_output()
         throw JSONRPCError(RPC_INTERNAL_ERROR, "SaplingNotePlaintext::encrypt() failed");
     }
 
-    auto enc = res.get();
+    auto enc = res.value();
     auto encryptor = enc.second;
 
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
