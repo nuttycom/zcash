@@ -2244,9 +2244,10 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             txundo.vprevout.push_back(CTxInUndo(coins->vout[nPos]));
             coins->Spend(nPos);
 
-            // If this was the last unspent output, save information
-            // about the transaction along with the undo for this output
-            // so that we can restore it when unwinding.
+            // If this input referenced the last unspent output of the
+            // transaction that was the source of coins, save information about
+            // the transaction along with the undo for this output so that we
+            // can restore it when unwinding.
             if (!coins->HasUnspent()) {
                 CTxInUndo& undo = txundo.vprevout.back();
                 undo.nHeight = coins->nHeight;
@@ -2265,9 +2266,10 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             txundo.vtzeprevout.push_back(CTzeInUndo(coins->vtzeout[nPos].first, coins->nHeight, coins->nVersion));
             coins->SpendTzeOut(nPos);
 
-            // If this was the last unspent output, save information
-            // about the transaction along with the undo for this output
-            // so that we can restore it when unwinding.
+            // If this input referenced the last unspent output of the
+            // transaction that was the source of coins, save information about
+            // the transaction along with the undo for this output so that we
+            // can restore it when unwinding.
             if (!coins->HasUnspent()) {
                 CTzeInUndo& undo = txundo.vtzeprevout.back();
                 undo.nHeight = coins->nHeight;
@@ -2727,6 +2729,7 @@ static DisconnectResult DisconnectBlock(const CBlock& block, CValidationState& s
                 error("DisconnectBlock(): transaction and undo data inconsistent");
                 return DISCONNECT_FAILED;
             }
+
             for (unsigned int j = tx.vin.size(); j-- > 0;) {
                 const COutPoint &out = tx.vin[j].prevout;
                 const CTxInUndo &undo = txundo.vprevout[j];
@@ -2753,6 +2756,7 @@ static DisconnectResult DisconnectBlock(const CBlock& block, CValidationState& s
                             CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight)));
                     }
                 }
+
                 // insightexplorer
                 if (fSpentIndex && updateIndices) {
                     // undo and delete the spent index
@@ -2760,6 +2764,16 @@ static DisconnectResult DisconnectBlock(const CBlock& block, CValidationState& s
                         CSpentIndexKey(input.prevout.hash, input.prevout.n),
                         CSpentIndexValue()));
                 }
+            }
+
+            for (unsigned int j = tx.vtzein.size(); j-- > 0;) {
+                const COutPoint &out = tx.vin[j].prevout;
+                const CTzeInUndo &undo = txundo.vtzeprevout[j];
+                if (!ApplyTzeInUndo(undo, view, out))
+                    fClean = false;
+
+                // insight explorer / spent index functionality is not provided
+                // for TZE outputs at this time.
             }
         }
     }

@@ -65,10 +65,11 @@ class CTzeInUndo
 public:
     CTzeOut tzeout;       // the tzeout data before being spent
 
-    // The following fields are only in the case that the associated output is the last
-    // unspent output (transparent or TZE) of a transaction. Since blocks are unwound
-    // from tip to base, at the time that such an undo is applied this information can
-    // be used to reconstruct a CCoins value that caches unspent outputs for the transaction.
+    // The following fields are populated only in the case that the associated
+    // output is the last unspent output (transparent or TZE) of a transaction.
+    // Since blocks are unwound from tip to base, at the time that such an undo
+    // is applied this information can be used to reconstruct a CCoins value
+    // that caches unspent outputs for the transaction.
     unsigned int nHeight; // if the outpoint was the last unspent: its height
     int nVersion;         // if the outpoint was the last unspent: its version
 
