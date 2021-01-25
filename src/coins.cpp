@@ -32,7 +32,7 @@ bool CCoins::Spend(uint32_t nPos)
 
 bool CCoins::SpendTzeOut(uint32_t nPos)
 {
-    if (nPos >= vtzeout.size() || vtzeout[nPos].second == SPENT) {
+    if (!IsTzeAvailable(nPos)) {
         return false;
     } else {
         vtzeout[nPos].second = SPENT;

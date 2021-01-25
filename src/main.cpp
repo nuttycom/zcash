@@ -1453,9 +1453,9 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
                              REJECT_INVALID, "bad-cb-has-spend-description");
         // See ContextualCheckTransaction for consensus rules on coinbase output descriptions.
 
-        // A coinbase transaction cannot have TZE inputs
-        if (tx.vtzein.size() > 0)
-            return state.DoS(100, error("CheckTransaction(): coinbase has TZE inputs"),
+        // A coinbase transaction cannot have TZE inputs or outputs
+        if (tx.vtzein.size() > 0 || tx.vtzeout.size() > 0)
+            return state.DoS(100, error("CheckTransaction(): coinbase has TZE inputs or outputs."),
                              REJECT_INVALID, "bad-cb-has-tze-inputs");
 
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
@@ -2238,7 +2238,7 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             CCoinsModifier coins = inputs.ModifyCoins(txin.prevout.hash);
             unsigned nPos = txin.prevout.n;
 
-            assert(nPos < coins->vout.size() && !coins->vout[nPos].IsNull());
+            assert(coins->IsAvailable(nPos));
 
             // mark an outpoint spent, and construct undo information
             txundo.vprevout.push_back(CTxInUndo(coins->vout[nPos]));
@@ -2260,7 +2260,7 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             CCoinsModifier coins = inputs.ModifyCoins(tzein.prevout.hash);
             unsigned nPos = tzein.prevout.n;
 
-            assert(nPos < coins->vtzeout.size() && coins->vtzeout[nPos].second != SPENT);
+            assert(coins->IsTzeAvailable(nPos));
 
             txundo.vtzeprevout.push_back(CTzeInUndo(coins->vtzeout[nPos].first, coins->nHeight, coins->nVersion));
             coins->SpendTzeOut(nPos);
