@@ -74,7 +74,7 @@ public:
     int nVersion;         // if the outpoint was the last unspent: its version
 
     CTzeInUndo() : tzeout(), nHeight(0), nVersion(0) {}
-    CTzeInUndo(const CTzeOut &tzeoutIn, unsigned int nHeightIn, int nVersionIn):
+    CTzeInUndo(const CTzeOut &tzeoutIn, unsigned int nHeightIn = 0, int nVersionIn = 0):
         tzeout(tzeoutIn), nHeight(nHeightIn), nVersion(nVersionIn) { }
 
     template<typename Stream>

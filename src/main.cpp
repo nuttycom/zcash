@@ -2241,6 +2241,8 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
             assert(coins->IsAvailable(nPos));
 
             // mark an outpoint spent, and construct undo information
+            // When constructing CTxInUndo, we do not set the nHeight and nVersion fields
+            // unless it is the last unspent output of the coin.
             txundo.vprevout.push_back(CTxInUndo(coins->vout[nPos]));
             coins->Spend(nPos);
 
@@ -2263,7 +2265,10 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txund
 
             assert(coins->IsTzeAvailable(nPos));
 
-            txundo.vtzeprevout.push_back(CTzeInUndo(coins->vtzeout[nPos].first, coins->nHeight, coins->nVersion));
+            // mark an outpoint spent, and construct undo information
+            // When constructing CTzeInUndo, we do not set the nHeight and nVersion fields
+            // unless it is the last unspent output of the coin.
+            txundo.vtzeprevout.push_back(CTzeInUndo(coins->vtzeout[nPos].first));
             coins->SpendTzeOut(nPos);
 
             // If this input referenced the last unspent output of the
@@ -2608,7 +2613,7 @@ static bool ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const CO
  * @param out The out point that corresponds to the tx input.
  * @return True on success.
  */
-static bool ApplyTzeInUndo(const CTzeInUndo& undo, CCoinsViewCache& view, const COutPoint& out)
+static bool ApplyTzeInUndo(const CTzeInUndo& undo, CCoinsViewCache& view, const CTzeOutPoint& out)
 {
     bool fClean = true;
 
@@ -2767,7 +2772,7 @@ static DisconnectResult DisconnectBlock(const CBlock& block, CValidationState& s
             }
 
             for (unsigned int j = tx.vtzein.size(); j-- > 0;) {
-                const COutPoint &out = tx.vin[j].prevout;
+                const CTzeOutPoint &out = tx.vtzein[j].prevout;
                 const CTzeInUndo &undo = txundo.vtzeprevout[j];
                 if (!ApplyTzeInUndo(undo, view, out))
                     fClean = false;
