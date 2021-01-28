@@ -53,9 +53,14 @@ BLOSSOM_PROTO_VERSION = 170008
 
 MY_SUBVERSION = b"/python-mininode-tester:0.0.3/"
 
+OVERWINTER_TX_VERSION = 3
+SAPLING_TX_VERSION = 4
+ZFUTURE_TX_VERSION = 0x0000FFFF
+
 SPROUT_VERSION_GROUP_ID = 0x00000000
 OVERWINTER_VERSION_GROUP_ID = 0x03C48270
 SAPLING_VERSION_GROUP_ID = 0x892F2085
+ZFUTURE_VERSION_GROUP_ID = 0xFFFFFFFF
 # No transaction format change in Blossom.
 
 MAX_INV_SZ = 50000
@@ -151,7 +156,7 @@ def block_work_from_compact(c):
     return 2**256 // (target + 1)
 
 
-def deser_vector(f, c):
+def read_from_compact(f):
     nit = struct.unpack("<B", f.read(1))[0]
     if nit == 253:
         nit = struct.unpack("<H", f.read(2))[0]
@@ -159,6 +164,11 @@ def deser_vector(f, c):
         nit = struct.unpack("<I", f.read(4))[0]
     elif nit == 255:
         nit = struct.unpack("<Q", f.read(8))[0]
+    return nit
+
+
+def deser_vector(f, c):
+    nit = read_from_compact(f)
     r = []
     for i in range(nit):
         t = c()
@@ -651,6 +661,76 @@ class CTxOut(object):
             % (self.nValue // 100000000, self.nValue % 100000000,
                hexlify(self.scriptPubKey))
 
+class CTzeData(object):
+    def __init__(self, extensionId=0, mode=0, payload=b""):
+        self.extensionId = extensionId
+        self.mode = mode
+        self.payoad = payload
+
+    def deserialize(self, f):
+        self.prevout = CTzeData()
+        self.extensionId = read_from_compact(f)
+        self.mode = read_from_compact(f)
+        self.payload = deser_string(f)
+
+    def serialize(self):
+        r = b""
+        r += ser_compactsize(self.extensionId)
+        r += ser_compactsize(self.mode)
+        r += ser_string(self.payload)
+        return r
+
+    def __repr__(self):
+        return "CTzeData(extensionId=%i mode=%i payload=%s)" \
+            % (self.extensionId, self.mode, hexlify(self.payload))
+
+
+class CTzeIn(object):
+    def __init__(self, prevout=None, witness=CTzeData()):
+        if prevout is None:
+            self.prevout = COutPoint()
+        else:
+            self.prevout = outpoint
+        self.witness = witness
+
+    def deserialize(self, f):
+        self.prevout = COutPoint()
+        self.prevout.deserialize(f)
+        self.witness = CTzeData()
+        self.witness.deserialize(f)
+
+    def serialize(self):
+        r = b""
+        r += self.prevout.serialize()
+        r += self.witness.serialize()
+        return r
+
+    def __repr__(self):
+        return "CTxTzeIn(prevout=%s witness=%s)" \
+            % (self.prevout, self.witness.__repr__())
+
+
+class CTzeOut(object):
+    def __init__(self, nValue=0, predicate=CTzeData()):
+        self.nValue = nValue
+        self.predicate = predicate
+
+    def deserialize(self, f):
+        self.nValue = struct.unpack("<q", f.read(8))[0]
+        self.predicate = CTzeData()
+        self.predicate.deserialize(f)
+
+    def serialize(self):
+        r = b""
+        r += struct.pack("<q", self.nValue)
+        r += self.predicate.serialize()
+        return r
+
+    def __repr__(self):
+        return "CTxOut(nValue=%i.%08i predicate=%s)" \
+            % (self.nValue // 100000000, self.nValue % 100000000,
+               self.predicate.__repr__())
+
 
 class CTransaction(object):
     def __init__(self, tx=None):
@@ -660,6 +740,8 @@ class CTransaction(object):
             self.nVersionGroupId = SAPLING_VERSION_GROUP_ID
             self.vin = []
             self.vout = []
+            self.vtzein = []
+            self.vtzeout = []
             self.nLockTime = 0
             self.nExpiryHeight = 0
             self.valueBalance = 0
@@ -677,6 +759,8 @@ class CTransaction(object):
             self.nVersionGroupId = tx.nVersionGroupId
             self.vin = copy.deepcopy(tx.vin)
             self.vout = copy.deepcopy(tx.vout)
+            self.vtzein = copy.deepcopy(tx.vtzein)
+            self.vtzeout = copy.deepcopy(tx.vtzeout)
             self.nLockTime = tx.nLockTime
             self.nExpiryHeight = tx.nExpiryHeight
             self.valueBalance = tx.valueBalance
@@ -698,13 +782,21 @@ class CTransaction(object):
 
         isOverwinterV3 = (self.fOverwintered and
                           self.nVersionGroupId == OVERWINTER_VERSION_GROUP_ID and
-                          self.nVersion == 3)
+                          self.nVersion == OVERWINTER_TX_VERSION)
         isSaplingV4 = (self.fOverwintered and
                        self.nVersionGroupId == SAPLING_VERSION_GROUP_ID and
-                       self.nVersion == 4)
+                       self.nVersion == SAPLING_TX_VERSION)
+        isFuture = (self.fOverwintered and
+                    self.nVersionGroupId == ZFUTURE_VERSION_GROUP_ID and
+                    self.nVersion == ZFUTURE_TX_VERSION)
 
         self.vin = deser_vector(f, CTxIn)
         self.vout = deser_vector(f, CTxOut)
+
+        if isFuture:
+            self.vtzein = deser_vector(f, CTzeIn)
+            self.vtzeout = deser_vector(f, CTzeOut)
+
         self.nLockTime = struct.unpack("<I", f.read(4))[0]
         if isOverwinterV3 or isSaplingV4:
             self.nExpiryHeight = struct.unpack("<I", f.read(4))[0]
@@ -728,12 +820,16 @@ class CTransaction(object):
 
     def serialize(self):
         header = (int(self.fOverwintered)<<31) | self.nVersion
+
         isOverwinterV3 = (self.fOverwintered and
                           self.nVersionGroupId == OVERWINTER_VERSION_GROUP_ID and
-                          self.nVersion == 3)
+                          self.nVersion == OVERWINTER_TX_VERSION)
         isSaplingV4 = (self.fOverwintered and
                        self.nVersionGroupId == SAPLING_VERSION_GROUP_ID and
-                       self.nVersion == 4)
+                       self.nVersion == SAPLING_TX_VERSION)
+        isFuture = (self.fOverwintered and
+                    self.nVersionGroupId == ZFUTURE_VERSION_GROUP_ID and
+                    self.nVersion == ZFUTURE_TX_VERSION)
 
         r = b""
         r += struct.pack("<I", header)
@@ -741,6 +837,9 @@ class CTransaction(object):
             r += struct.pack("<I", self.nVersionGroupId)
         r += ser_vector(self.vin)
         r += ser_vector(self.vout)
+        if isFuture:
+            r += ser_vector(self.vtzein)
+            r += ser_vector(self.vtzeout)
         r += struct.pack("<I", self.nLockTime)
         if isOverwinterV3 or isSaplingV4:
             r += struct.pack("<I", self.nExpiryHeight)
