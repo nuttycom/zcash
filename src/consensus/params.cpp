@@ -15,21 +15,12 @@ namespace Consensus {
         return NetworkUpgradeState(nHeight, *this, idx) == UPGRADE_ACTIVE;
     }
 
-    bool Params::FeatureActive(const int nHeight, const Consensus::ConsensusFeature feature) const {
-        auto requires = WhatDependsOn(feature);
-        if (vRequiredFeatures.count(feature) > 0 ||
-            std::any_of(requires.begin(), requires.end(), [&](Consensus::ConsensusFeature feat) { return FeatureActive(nHeight, feat); })) {
-            // Either the feature is required, or it is a dependency of an active feature.
-            return true;
-        } else {
-            switch (feature) {
-                case ZIP222_TZE:
-                    return NetworkUpgradeActive(nHeight, UpgradeIndex::UPGRADE_ZFUTURE);
+    bool Params::FeatureRequired(const Consensus::ConsensusFeature feature) const {
+        return vRequiredFeatures.count(feature) > 0;
+    }
 
-                default:
-                    return false;
-            };
-        }
+    bool Params::FeatureActive(const int nHeight, const Consensus::ConsensusFeature feature) const {
+        return Features.FeatureActive(*this, nHeight, feature);
     }
 
     bool Params::FutureTimestampSoftForkActive(int nHeight) const {
@@ -226,24 +217,5 @@ namespace Consensus {
 
     int64_t Params::MaxActualTimespan(int nHeight) const {
         return (AveragingWindowTimespan(nHeight) * (100 + nPowMaxAdjustDown)) / 100;
-    }
-
-    std::vector<ConsensusFeature> WhatDependsOn(ConsensusFeature f) {
-        std::vector<ConsensusFeature> reverseDeps;
-
-        for (int feat = (int) FIRST_CONSENSUS_FEATURE; feat <= ConsensusFeature::MAX_FEATURES; feat++) {
-            for(ConsensusFeature dep : FeatureDeps[feat].dependencies) {
-                if (dep == f) {
-                    reverseDeps.push_back((ConsensusFeature) feat);
-
-                    // if feat depends upon this feature, then its dependants also
-                    // depend on this feature.
-                    auto parents = WhatDependsOn((ConsensusFeature) feat);
-                    reverseDeps.insert(reverseDeps.end(), parents.begin(), parents.end());
-                }
-            }
-        }
-
-        return reverseDeps;
     }
 }
