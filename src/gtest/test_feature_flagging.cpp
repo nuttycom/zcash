@@ -85,7 +85,13 @@ TEST(FeatureFlagging, FeatureDependencies) {
     EXPECT_TRUE(features.FeatureActive(params, 20, TF_3));
     EXPECT_TRUE(features.FeatureActive(params, 20, TF_4));
 
+    // Force TF_4 to be active
     params.vRequiredFeatures.insert(TF_4);
 
+    // Ensure that a feature cannot be forced to be active if
+    // all of its dependencies are not active
     EXPECT_DEATH(features.FeatureActive(params, 5, TF_4), "");
+    // A feature can be activated before its activation height
+    // if all of its dependencies are active
+    EXPECT_TRUE(features.FeatureActive(params, 15, TF_4));
 }
