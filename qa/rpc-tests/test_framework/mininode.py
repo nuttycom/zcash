@@ -665,7 +665,7 @@ class CTzeData(object):
     def __init__(self, extensionId=0, mode=0, payload=b""):
         self.extensionId = extensionId
         self.mode = mode
-        self.payoad = payload
+        self.payload = payload
 
     def deserialize(self, f):
         self.prevout = CTzeData()

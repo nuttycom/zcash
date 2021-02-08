@@ -124,6 +124,7 @@ BASE_SCRIPTS= [
     'wallet_broadcast.py',
     'wallet_z_sendmany.py',
     'wallet_zero_value.py',
+    'tze_reorg.py',
 ]
 
 ZMQ_SCRIPTS = [

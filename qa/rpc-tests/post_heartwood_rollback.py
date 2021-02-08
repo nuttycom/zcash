@@ -23,8 +23,18 @@ from test_framework.util import (
 import logging
 import time
 
-HAS_CANOPY = [nuparams(BLOSSOM_BRANCH_ID, 205), nuparams(HEARTWOOD_BRANCH_ID, 210), nuparams(CANOPY_BRANCH_ID, 220), '-nurejectoldversions=false']
-NO_CANOPY  = [nuparams(BLOSSOM_BRANCH_ID, 205), nuparams(HEARTWOOD_BRANCH_ID, 210), '-nurejectoldversions=false']
+HAS_CANOPY = [
+    nuparams(BLOSSOM_BRANCH_ID, 205), 
+    nuparams(HEARTWOOD_BRANCH_ID, 210), 
+    nuparams(CANOPY_BRANCH_ID, 220), 
+    '-nurejectoldversions=false'
+]
+
+NO_CANOPY  = [
+    nuparams(BLOSSOM_BRANCH_ID, 205), 
+    nuparams(HEARTWOOD_BRANCH_ID, 210), 
+    '-nurejectoldversions=false'
+]
 
 class PostHeartwoodRollbackTest (BitcoinTestFramework):
 
