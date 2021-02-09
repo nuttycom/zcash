@@ -900,27 +900,19 @@ bool ContextualCheckTransaction(
     // Rules that apply to Sapling and later:
     if (saplingActive) {
         // Reject transactions with non-Sapling version group ID
-        if (tx.nVersionGroupId != SAPLING_VERSION_GROUP_ID) {
+        if (tx.nVersionGroupId < SAPLING_VERSION_GROUP_ID) {
             return state.DoS(
                 dosLevelPotentiallyRelaxing,
                 error("ContextualCheckTransaction(): invalid Sapling tx version"),
                 REJECT_INVALID, "bad-sapling-tx-version-group-id");
         }
 
-        // Reject transactions with invalid version
+        // Reject transactions with too-low version
         if (tx.nVersion < SAPLING_MIN_TX_VERSION) {
             return state.DoS(
                 dosLevelConstricting,
                 error("ContextualCheckTransaction(): Sapling version too low"),
                 REJECT_INVALID, "bad-tx-sapling-version-too-low");
-        }
-
-        // Reject transactions with invalid version
-        if (tx.nVersion > SAPLING_MAX_TX_VERSION) {
-            return state.DoS(
-                dosLevelPotentiallyRelaxing,
-                error("ContextualCheckTransaction(): Sapling version too high"),
-                REJECT_INVALID, "bad-tx-sapling-version-too-high");
         }
     } else {
         // Rules that apply generally before Sapling. These were
@@ -1024,8 +1016,10 @@ bool ContextualCheckTransaction(
     if (canopyActive) {
         for (const JSDescription& joinsplit : tx.vJoinSplit) {
             if (joinsplit.vpub_old > 0) {
-                return state.DoS(DOS_LEVEL_BLOCK, error("ContextualCheckTransaction(): joinsplit.vpub_old nonzero"),
-                                 REJECT_INVALID, "bad-txns-vpub_old-nonzero");
+                return state.DoS(
+                    DOS_LEVEL_BLOCK,
+                    error("ContextualCheckTransaction(): joinsplit.vpub_old nonzero"),
+                    REJECT_INVALID, "bad-txns-vpub_old-nonzero");
             }
         }
 
@@ -1042,14 +1036,37 @@ bool ContextualCheckTransaction(
             }
 
             if (!fundingStreamElements.empty()) {
-                return state.DoS(100, error("ContextualCheckTransaction(): funding stream missing at height %d", nHeight),
-                                 REJECT_INVALID, "cb-funding-stream-missing");
+                return state.DoS(
+                    100,
+                    error("ContextualCheckTransaction(): funding stream missing at height %d", nHeight),
+                    REJECT_INVALID, "cb-funding-stream-missing");
             }
         }
     } else {
         // Rules that apply generally before Canopy. These were
         // previously noncontextual checks that became contextual
         // after Canopy activation.
+    }
+
+    if (futureActive) {
+    } else {
+        // Rules that apply generally if the future epoch is not yet activated
+
+        // Reject transactions with greater than max sapling version
+        if (tx.nVersion > SAPLING_MAX_TX_VERSION) {
+            return state.DoS(
+                dosLevelPotentiallyRelaxing,
+                error("ContextualCheckTransaction(): Sapling version too high"),
+                REJECT_INVALID, "bad-tx-sapling-version-too-high");
+        }
+
+        // Reject transactions with incorrect version group id
+        if (tx.nVersionGroupId != SAPLING_VERSION_GROUP_ID) {
+            return state.DoS(
+                dosLevelPotentiallyRelaxing,
+                error("ContextualCheckTransaction(): invalid Sapling tx version"),
+                REJECT_INVALID, "bad-sapling-tx-version-group-id");
+        }
     }
 
     auto consensusBranchId = CurrentEpochBranchId(nHeight, consensus);
@@ -1243,7 +1260,8 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
                 REJECT_INVALID, "bad-tx-overwinter-version-too-low");
         }
         if (tx.nVersionGroupId != OVERWINTER_VERSION_GROUP_ID &&
-                tx.nVersionGroupId != SAPLING_VERSION_GROUP_ID) {
+                tx.nVersionGroupId != SAPLING_VERSION_GROUP_ID &&
+                tx.nVersionGroupId != ZFUTURE_VERSION_GROUP_ID) {
             return state.DoS(100, error("CheckTransaction(): unknown tx version group id"),
                     REJECT_INVALID, "bad-tx-version-group-id");
         }
