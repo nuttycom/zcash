@@ -307,7 +307,8 @@ public:
 
             unsigned int nTzeMaskSize = 0, nTzeMaskCode = 0;
             CalcMaskSize(coins.vtzeout, tzeoutSpent, nTzeMaskSize, nTzeMaskCode);
-            unsigned int nTzeCode = SerCode(coins.vtzeout, tzeoutSpent, coins.fCoinBase, nTzeMaskSize);
+            // we reuse the coins code format here for encoding TZE output unspentness
+            unsigned int nTzeCode = SerCode(coins.vtzeout, tzeoutSpent, false, nTzeMaskSize);
 
             // write header code, mask, then the actual unspent coins
             ::Serialize(s, VARINT(nTzeCode));

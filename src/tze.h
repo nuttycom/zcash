@@ -17,13 +17,6 @@ public:
 
     TzeContext(int heightIn, const CTransaction& txIn): height(heightIn), tx(txIn) {
     }
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(height);
-        READWRITE(tx);
-    }
 };
 
 class TZE

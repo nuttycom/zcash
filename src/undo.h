@@ -11,8 +11,8 @@
 #include "serialize.h"
 
 enum CTxUndoVersion {
-    UNDO_VERSION_ZERO = 0,
-    UNDO_VERSION_ONE = 1
+    UNDO_V0 = 0,
+    UNDO_V1 = 1,
 };
 
 /** Undo information for a CTxIn
@@ -102,7 +102,7 @@ public:
     friend class CTxUndoReadVisitor;
 
     // undo information for all txins
-    CTxUndo(): version(UNDO_VERSION_ONE) { }
+    CTxUndo(): version(UNDO_V1) { }
 
     std::vector<CTxInUndo> vprevout;
     std::vector<CTzeInUndo> vtzeprevout;
@@ -123,12 +123,12 @@ public:
     CTxUndoReadVisitor(Stream& sIn, CTxUndo& undoIn): s(sIn), undo(undoIn) {}
 
     void operator()(uint64_t& nSize) const {
-        undo.version = UNDO_VERSION_ZERO;
+        undo.version = UNDO_V0;
         ::UnserializeSized(s, nSize, undo.vprevout);
     }
 
     void operator()(CompactSizeFlags& flags) const {
-        undo.version = UNDO_VERSION_ONE;
+        undo.version = UNDO_V1;
         if (flags.GetFlags() == 0x00) {
             ::Unserialize(s, undo.vprevout);
             ::Unserialize(s, undo.vtzeprevout);
@@ -140,7 +140,7 @@ public:
 
 template<typename Stream>
 void CTxUndo::Serialize(Stream &s) const {
-    if (version == UNDO_VERSION_ZERO) {
+    if (version == UNDO_V0) {
         ::Serialize(s, vprevout);
     } else {
         CompactSizeFlags csf(0x00);
