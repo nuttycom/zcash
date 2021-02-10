@@ -296,10 +296,10 @@ public:
         // spentness bitmask
         WriteMask(s, coins.vout, txoutSpent, nMaskSize);
         // txouts themself
-        for (unsigned int i = 0; i < coins.vout.size(); i++) {
+        for (const CTxOut& out : coins.vout) {
             // only unspent txos are written out
-            if (!coins.vout[i].IsNull())
-                ::Serialize(s, CTxOutCompressor(REF(coins.vout[i])));
+            if (!out.IsNull())
+                ::Serialize(s, CTxOutCompressor(REF(out)));
         }
         // tzeout
         if (coins.nVersion >= ZFUTURE_TX_VERSION) {
@@ -313,9 +313,9 @@ public:
             // write header code, mask, then the actual unspent coins
             ::Serialize(s, VARINT(nTzeCode));
             WriteMask(s, coins.vtzeout, tzeoutSpent, nTzeMaskSize);
-            for (unsigned int i = 0; i < coins.vtzeout.size(); i++) {
-                if (coins.vtzeout[i].second == UNSPENT)
-                    ::Serialize(s, CTzeOutCompressor(REF(coins.vtzeout[i].first)));
+            for (const CCoins::TzeOutCoin& out : coins.vtzeout) {
+                if (out.second == UNSPENT)
+                    ::Serialize(s, CTzeOutCompressor(REF(out.first)));
             }
         }
         // coinbase height
