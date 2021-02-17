@@ -19,6 +19,11 @@ std::string SaplingOutPoint::ToString() const
     return strprintf("SaplingOutPoint(%s, %u)", hash.ToString().substr(0, 10), n);
 }
 
+std::string CTzeOutPoint::ToString() const
+{
+    return strprintf("CTzeOutPoint(%s, %u)", hash.ToString().substr(0,10), n);
+}
+
 CTxIn::CTxIn(COutPoint prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)
 {
     prevout = prevoutIn;
@@ -64,10 +69,29 @@ std::string CTxOut::ToString() const
     return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 }
 
+std::string CTzeIn::ToString() const
+{
+    std::string str;
+    str += "CTzeIn(prevout=";
+    str += prevout.ToString();
+    str += strprintf(", extensionid=%u", witness.extensionId);
+    str += strprintf(", mode=%u", witness.mode);
+    return str;
+}
+
+std::string CTzeOut::ToString() const
+{
+    std::string str;
+    str += "CTzeOut(";
+    str += strprintf("nValue=%d.%08d", nValue / COIN, nValue % COIN);
+    str += strprintf(", extensionid=%u", predicate.extensionId);
+    str += strprintf(", mode=%u", predicate.mode);
+    return str;
+}
 
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::SPROUT_MIN_CURRENT_VERSION), fOverwintered(false), nVersionGroupId(0), nExpiryHeight(0), nLockTime(0), valueBalance(0) {}
 CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId), nExpiryHeight(tx.nExpiryHeight),
-                                                                   vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+                                                                   vin(tx.vin), vout(tx.vout), vtzein(tx.vtzein), vtzeout(tx.vtzeout), nLockTime(tx.nLockTime),
                                                                    valueBalance(tx.valueBalance), vShieldedSpend(tx.vShieldedSpend), vShieldedOutput(tx.vShieldedOutput),
                                                                    vJoinSplit(tx.vJoinSplit), joinSplitPubKey(tx.joinSplitPubKey), joinSplitSig(tx.joinSplitSig),
                                                                    bindingSig(tx.bindingSig)
@@ -85,13 +109,13 @@ void CTransaction::UpdateHash() const
 }
 
 CTransaction::CTransaction() : nVersion(CTransaction::SPROUT_MIN_CURRENT_VERSION), fOverwintered(false), nVersionGroupId(0), nExpiryHeight(0),
-                               vin(), vout(), nLockTime(0),
+                               vin(), vout(), vtzein(), vtzeout(), nLockTime(0),
                                valueBalance(0), vShieldedSpend(), vShieldedOutput(),
                                vJoinSplit(), joinSplitPubKey(), joinSplitSig(),
                                bindingSig() { }
 
 CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId), nExpiryHeight(tx.nExpiryHeight),
-                                                            vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+                                                            vin(tx.vin), vout(tx.vout), vtzein(tx.vtzein), vtzeout(tx.vtzeout), nLockTime(tx.nLockTime),
                                                             valueBalance(tx.valueBalance), vShieldedSpend(tx.vShieldedSpend), vShieldedOutput(tx.vShieldedOutput),
                                                             vJoinSplit(tx.vJoinSplit), joinSplitPubKey(tx.joinSplitPubKey), joinSplitSig(tx.joinSplitSig),
                                                             bindingSig(tx.bindingSig)
@@ -104,7 +128,7 @@ CTransaction::CTransaction(const CMutableTransaction &tx) : nVersion(tx.nVersion
 CTransaction::CTransaction(
     const CMutableTransaction &tx,
     bool evilDeveloperFlag) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId), nExpiryHeight(tx.nExpiryHeight),
-                              vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+                              vin(tx.vin), vout(tx.vout), vtzein(tx.vtzein), vtzeout(tx.vtzeout), nLockTime(tx.nLockTime),
                               valueBalance(tx.valueBalance), vShieldedSpend(tx.vShieldedSpend), vShieldedOutput(tx.vShieldedOutput),
                               vJoinSplit(tx.vJoinSplit), joinSplitPubKey(tx.joinSplitPubKey), joinSplitSig(tx.joinSplitSig),
                               bindingSig(tx.bindingSig)
@@ -113,7 +137,7 @@ CTransaction::CTransaction(
 }
 
 CTransaction::CTransaction(CMutableTransaction &&tx) : nVersion(tx.nVersion), fOverwintered(tx.fOverwintered), nVersionGroupId(tx.nVersionGroupId),
-                                                       vin(std::move(tx.vin)), vout(std::move(tx.vout)),
+                                                       vin(std::move(tx.vin)), vout(std::move(tx.vout)), vtzein(std::move(tx.vtzein)), vtzeout(std::move(tx.vtzeout)),
                                                        nLockTime(tx.nLockTime), nExpiryHeight(tx.nExpiryHeight),
                                                        valueBalance(tx.valueBalance),
                                                        vShieldedSpend(std::move(tx.vShieldedSpend)), vShieldedOutput(std::move(tx.vShieldedOutput)),
@@ -147,6 +171,13 @@ CAmount CTransaction::GetValueOut() const
 {
     CAmount nValueOut = 0;
     for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
+    {
+        nValueOut += it->nValue;
+        if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
+            throw std::runtime_error("CTransaction::GetValueOut(): value out of range");
+    }
+
+    for (std::vector<CTzeOut>::const_iterator it(vtzeout.begin()); it != vtzeout.end(); ++it)
     {
         nValueOut += it->nValue;
         if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
@@ -248,13 +279,15 @@ std::string CTransaction::ToString() const
             vShieldedSpend.size(),
             vShieldedOutput.size());
     } else if (nVersion >= 3) {
-        str += strprintf("CTransaction(hash=%s, ver=%d, fOverwintered=%d, nVersionGroupId=%08x, vin.size=%u, vout.size=%u, nLockTime=%u, nExpiryHeight=%u)\n",
+        str += strprintf("CTransaction(hash=%s, ver=%d, fOverwintered=%d, nVersionGroupId=%08x, vin.size=%u, vtzein.size=%u, vout.size=%u, vtzeout.size=%u, nLockTime=%u, nExpiryHeight=%u)\n",
             GetHash().ToString().substr(0,10),
             nVersion,
             fOverwintered,
             nVersionGroupId,
             vin.size(),
+            vtzein.size(),
             vout.size(),
+            vtzeout.size(),
             nLockTime,
             nExpiryHeight);
     }
@@ -262,6 +295,10 @@ std::string CTransaction::ToString() const
         str += "    " + vin[i].ToString() + "\n";
     for (unsigned int i = 0; i < vout.size(); i++)
         str += "    " + vout[i].ToString() + "\n";
+    for (unsigned int i = 0; i < vtzein.size(); i++)
+        str += "    " + vtzein[i].ToString() + "\n";
+    for (unsigned int i = 0; i < vtzeout.size(); i++)
+        str += "    " + vtzeout[i].ToString() + "\n";
     return str;
 }
 
