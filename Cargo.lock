@@ -392,8 +392,7 @@ dependencies = [
 [[package]]
 name = "equihash"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4127688f6177e3f57521881cb1cfd90d1228214f9dc43b8efe6f6c6948cd8280"
+source = "git+https://github.com/zcash/librustzcash?branch=master#9f14c757e61ee8144e18bc2f40dfedaa8c605fe8"
 dependencies = [
  "blake2b_simd",
  "byteorder",
@@ -537,6 +536,7 @@ dependencies = [
  "tracing-appender",
  "tracing-core",
  "tracing-subscriber",
+ "zcash_extensions",
  "zcash_history",
  "zcash_primitives",
  "zcash_proofs",
@@ -992,10 +992,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
 
 [[package]]
+name = "zcash_extensions"
+version = "0.0.0"
+source = "git+https://github.com/zcash/librustzcash?branch=master#9f14c757e61ee8144e18bc2f40dfedaa8c605fe8"
+dependencies = [
+ "blake2b_simd",
+ "zcash_primitives",
+]
+
+[[package]]
 name = "zcash_history"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abfbab9accba014bbf3098d5aa66c1714d0db4abe25b999b8400bbd626ccd2f4"
+source = "git+https://github.com/zcash/librustzcash?branch=master#9f14c757e61ee8144e18bc2f40dfedaa8c605fe8"
 dependencies = [
  "bigint",
  "blake2b_simd",
@@ -1005,8 +1013,7 @@ dependencies = [
 [[package]]
 name = "zcash_primitives"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45ab71b5765cb89a423e3a2f0de596dc8e581bf5bbf9d933bc8c22833886d13c"
+source = "git+https://github.com/zcash/librustzcash?branch=master#9f14c757e61ee8144e18bc2f40dfedaa8c605fe8"
 dependencies = [
  "aes",
  "bitvec",
@@ -1032,8 +1039,7 @@ dependencies = [
 [[package]]
 name = "zcash_proofs"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "902845afb8636c4f88c0fd2a8bf338b645474488cb60676194fbf7713a3b9cc0"
+source = "git+https://github.com/zcash/librustzcash?branch=master#9f14c757e61ee8144e18bc2f40dfedaa8c605fe8"
 dependencies = [
  "bellman",
  "blake2b_simd",

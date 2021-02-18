@@ -32,6 +32,7 @@ rand_core = "0.5.1"
 tracing = "0.1"
 tracing-core = "0.1"
 tracing-appender = "0.1"
+zcash_extensions = "0.0"
 zcash_history = "0.2"
 zcash_primitives = "0.4"
 zcash_proofs = "0.4"
@@ -46,3 +47,9 @@ features = ["ansi", "chrono", "env-filter"]
 lto = true
 panic = 'abort'
 codegen-units = 1
+
+[patch.crates-io]
+zcash_extensions = {git = "https://github.com/zcash/librustzcash", branch = "master"}
+zcash_history = {git = "https://github.com/zcash/librustzcash", branch = "master"}
+zcash_primitives = {git = "https://github.com/zcash/librustzcash", branch = "master"}
+zcash_proofs = {git = "https://github.com/zcash/librustzcash", branch = "master"}

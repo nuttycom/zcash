@@ -5,6 +5,7 @@
 
 #include "txdb.h"
 
+#include "compressor.h"
 #include "chainparams.h"
 #include "hash.h"
 #include "main.h"
@@ -46,10 +47,11 @@ static const char DB_SPENTINDEX = 'p';
 static const char DB_TIMESTAMPINDEX = 'T';
 static const char DB_BLOCKHASHINDEX = 'h';
 
+
 CCoinsViewDB::CCoinsViewDB(std::string dbName, size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe) {
 }
 
-CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe) 
+CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe)
 {
 }
 
@@ -95,7 +97,8 @@ bool CCoinsViewDB::GetNullifier(const uint256 &nf, ShieldedType type) const {
 }
 
 bool CCoinsViewDB::GetCoins(const uint256 &txid, CCoins &coins) const {
-    return db.Read(make_pair(DB_COINS, txid), coins);
+    CCoinsSer cs(coins);
+    return db.Read(make_pair(DB_COINS, txid), cs);
 }
 
 bool CCoinsViewDB::HaveCoins(const uint256 &txid) const {
@@ -111,7 +114,7 @@ uint256 CCoinsViewDB::GetBestBlock() const {
 
 uint256 CCoinsViewDB::GetBestAnchor(ShieldedType type) const {
     uint256 hashBestAnchor;
-    
+
     switch (type) {
         case SPROUT:
             if (!db.Read(DB_BEST_SPROUT_ANCHOR, hashBestAnchor))
@@ -238,10 +241,11 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins,
     size_t changed = 0;
     for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
         if (it->second.flags & CCoinsCacheEntry::DIRTY) {
-            if (it->second.coins.IsPruned())
+            if (it->second.coins.HasUnspent()) {
+                batch.Write(make_pair(DB_COINS, it->first), CCoinsSer(it->second.coins));
+            } else {
                 batch.Erase(make_pair(DB_COINS, it->first));
-            else
-                batch.Write(make_pair(DB_COINS, it->first), it->second.coins);
+            }
             changed++;
         }
         count++;
@@ -305,25 +309,35 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const {
         boost::this_thread::interruption_point();
         std::pair<char, uint256> key;
         CCoins coins;
-        if (pcursor->GetKey(key) && key.first == DB_COINS) {
-            if (pcursor->GetValue(coins)) {
-                stats.nTransactions++;
-                for (unsigned int i=0; i<coins.vout.size(); i++) {
-                    const CTxOut &out = coins.vout[i];
-                    if (!out.IsNull()) {
-                        stats.nTransactionOutputs++;
-                        ss << VARINT(i+1);
-                        ss << out;
-                        nTotalAmount += out.nValue;
+        if (pcursor->GetKey(key)) {
+            if (key.first == DB_COINS) {
+                CCoinsSer cs(coins);
+                if (pcursor->GetValue(cs)) {
+                    stats.nTransactions++;
+                    for (unsigned int i=0; i<cs.coins.vout.size(); i++) {
+                        const CTxOut &out = cs.coins.vout[i];
+                        if (!out.IsNull()) {
+                            stats.nTransactionOutputs++;
+                            ss << VARINT(i+1);
+                            ss << out;
+                            nTotalAmount += out.nValue;
+                        }
                     }
+                    for (unsigned int i=0; i<cs.coins.vtzeout.size(); i++) {
+                        const CCoins::TzeOutCoin& out = cs.coins.vtzeout[i];
+                        if (out.second == UNSPENT) {
+                            stats.nTransactionOutputs++;
+                            ss << VARINT(i+1);
+                            ss << out.first;
+                            nTotalAmount += out.first.nValue;
+                        }
+                    }
+                    stats.nSerializedSize += 32 + pcursor->GetValueSize();
+                    ss << VARINT(0);
+                } else {
+                    return error("CCoinsViewDB::GetStats() : unable to read value");
                 }
-                stats.nSerializedSize += 32 + pcursor->GetValueSize();
-                ss << VARINT(0);
-            } else {
-                return error("CCoinsViewDB::GetStats() : unable to read value");
             }
-        } else {
-            break;
         }
         pcursor->Next();
     }
