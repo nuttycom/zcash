@@ -87,6 +87,7 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
             "    \"addr\":\"host:port\",      (string) The IP address and port of the peer\n"
             "    \"addrlocal\":\"ip:port\",   (string) local address\n"
             "    \"services\":\"xxxxxxxxxxxxxxxx\",   (string) The services offered\n"
+            "    \"relaytxes\":true|false,    (boolean) Whether peer has asked us to relay transactions to it\n"
             "    \"lastsend\": ttt,           (numeric) The time in seconds since epoch (Jan 1 1970 GMT) of the last send\n"
             "    \"lastrecv\": ttt,           (numeric) The time in seconds since epoch (Jan 1 1970 GMT) of the last receive\n"
             "    \"bytessent\": n,            (numeric) The total bytes sent\n"
@@ -130,6 +131,7 @@ UniValue getpeerinfo(const UniValue& params, bool fHelp)
         if (!(stats.addrLocal.empty()))
             obj.pushKV("addrlocal", stats.addrLocal);
         obj.pushKV("services", strprintf("%016x", stats.nServices));
+        obj.pushKV("relaytxes", stats.fRelayTxes);
         obj.pushKV("lastsend", stats.nLastSend);
         obj.pushKV("lastrecv", stats.nLastRecv);
         obj.pushKV("bytessent", stats.nSendBytes);
@@ -188,7 +190,7 @@ UniValue addnode(const UniValue& params, bool fHelp)
     if (strCommand == "onetry")
     {
         CAddress addr;
-        OpenNetworkConnection(addr, NULL, strNode.c_str());
+        OpenNetworkConnection(addr, false, NULL, strNode.c_str());
         return NullUniValue;
     }
 
@@ -240,25 +242,22 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getaddednodeinfo dns ( \"node\" )\n"
+            "getaddednodeinfo dummy ( \"node\" )\n"
             "\nReturns information about the given added node, or all added nodes\n"
             "(note that onetry addnodes are not listed here)\n"
-            "If dns is false, only a list of added nodes will be provided,\n"
-            "otherwise connected information will also be available.\n"
             "\nArguments:\n"
-            "1. dns        (boolean, required) If false, only a list of added nodes will be provided, otherwise connected information will also be available.\n"
+            "1. dummy      (boolean, required) Kept for historical purposes but ignored\n"
             "2. \"node\"   (string, optional) If provided, return information about this specific node, otherwise all nodes are returned.\n"
             "\nResult:\n"
             "[\n"
             "  {\n"
-            "    \"addednode\" : \"192.168.0.201\",   (string) The node IP address\n"
+            "    \"addednode\" : \"192.168.0.201\",   (string) The node ip address or name (as provided to addnode)\n"
             "    \"connected\" : true|false,          (boolean) If connected\n"
-            "    \"addresses\" : [\n"
+            "    \"addresses\" : [                    (list of objects) Only when connected = true\n"
             "       {\n"
-            "         \"address\" : \"192.168.0.201:8233\",  (string) The Zcash server host and port\n"
+            "         \"address\" : \"192.168.0.201:8333\",  (string) The Zcash server IP and port we're connected to\n"
             "         \"connected\" : \"outbound\"           (string) connection, inbound or outbound\n"
             "       }\n"
-            "       ,...\n"
             "     ]\n"
             "  }\n"
             "  ,...\n"
@@ -269,82 +268,35 @@ UniValue getaddednodeinfo(const UniValue& params, bool fHelp)
             + HelpExampleRpc("getaddednodeinfo", "true, \"192.168.0.201\"")
         );
 
-    bool fDns = params[0].get_bool();
+    std::vector<AddedNodeInfo> vInfo = GetAddedNodeInfo();
 
-    list<string> laddedNodes(0);
-    if (params.size() == 1)
-    {
-        LOCK(cs_vAddedNodes);
-        for (const std::string& strAddNode : vAddedNodes)
-            laddedNodes.push_back(strAddNode);
-    }
-    else
-    {
-        string strNode = params[1].get_str();
-        LOCK(cs_vAddedNodes);
-        for (const std::string& strAddNode : vAddedNodes) {
-            if (strAddNode == strNode)
-            {
-                laddedNodes.push_back(strAddNode);
+    if (params.size() == 2) {
+        bool found = false;
+        for (const AddedNodeInfo& info : vInfo) {
+            if (info.strAddedNode == params[1].get_str()) {
+                vInfo.assign(1, info);
+                found = true;
                 break;
             }
         }
-        if (laddedNodes.size() == 0)
+        if (!found) {
             throw JSONRPCError(RPC_CLIENT_NODE_NOT_ADDED, "Error: Node has not been added.");
+        }
     }
 
     UniValue ret(UniValue::VARR);
-    if (!fDns)
-    {
-        for (const std::string& strAddNode : laddedNodes) {
-            UniValue obj(UniValue::VOBJ);
-            obj.pushKV("addednode", strAddNode);
-            ret.push_back(obj);
-        }
-        return ret;
-    }
 
-    list<pair<string, vector<CService> > > laddedAddreses(0);
-    for (const std::string& strAddNode : laddedNodes) {
-        vector<CService> vservNode(0);
-        if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))
-            laddedAddreses.push_back(make_pair(strAddNode, vservNode));
-        else
-        {
-            UniValue obj(UniValue::VOBJ);
-            obj.pushKV("addednode", strAddNode);
-            obj.pushKV("connected", false);
-            UniValue addresses(UniValue::VARR);
-            obj.pushKV("addresses", addresses);
-        }
-    }
-
-    LOCK(cs_vNodes);
-    for (list<pair<string, vector<CService> > >::iterator it = laddedAddreses.begin(); it != laddedAddreses.end(); it++)
-    {
+    for (const AddedNodeInfo& info : vInfo) {
         UniValue obj(UniValue::VOBJ);
-        obj.pushKV("addednode", it->first);
-
+        obj.pushKV("addednode", info.strAddedNode);
+        obj.pushKV("connected", info.fConnected);
         UniValue addresses(UniValue::VARR);
-        bool fConnected = false;
-        for (const CService& addrNode : it->second) {
-            bool fFound = false;
-            UniValue node(UniValue::VOBJ);
-            node.pushKV("address", addrNode.ToString());
-            for (CNode* pnode : vNodes) {
-                if (pnode->addr == addrNode)
-                {
-                    fFound = true;
-                    fConnected = true;
-                    node.pushKV("connected", pnode->fInbound ? "inbound" : "outbound");
-                    break;
-                }
-            }
-            if (!fFound)
-                node.pushKV("connected", "false");
-            addresses.push_back(node);
+        if (info.fConnected) {
+            UniValue address(UniValue::VOBJ);
+            address.pushKV("address", info.resolvedAddress.ToString());
+            address.pushKV("connected", info.fInbound ? "inbound" : "outbound");
+            addresses.push_back(address);
         }
-        obj.pushKV("connected", fConnected);
         obj.pushKV("addresses", addresses);
         ret.push_back(obj);
     }
@@ -461,6 +413,7 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
             "  \"subversion\": \"/MagicBean:x.y.z[-v]/\",     (string) the server subversion string\n"
             "  \"protocolversion\": xxxxx,              (numeric) the protocol version\n"
             "  \"localservices\": \"xxxxxxxxxxxxxxxx\", (string) the services we offer to the network\n"
+            "  \"localrelay\": true|false,              (bool) true if transaction relay is requested from peers\n"
             "  \"timeoffset\": xxxxx,                   (numeric) the time offset (deprecated; always 0)\n"
             "  \"connections\": xxxxx,                  (numeric) the number of connections\n"
             "  \"networks\": [                          (array) information per network\n"
@@ -494,7 +447,8 @@ UniValue getnetworkinfo(const UniValue& params, bool fHelp)
     obj.pushKV("version",       CLIENT_VERSION);
     obj.pushKV("subversion",    strSubVersion);
     obj.pushKV("protocolversion",PROTOCOL_VERSION);
-    obj.pushKV("localservices",       strprintf("%016x", nLocalServices));
+    obj.pushKV("localservices", strprintf("%016x", nLocalServices));
+    obj.pushKV("localrelay",    fRelayTxes);
     obj.pushKV("timeoffset",    0);
     obj.pushKV("connections",   (int)vNodes.size());
     obj.pushKV("networks",      GetNetworksInfo());

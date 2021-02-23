@@ -60,6 +60,10 @@ struct CNodeStateStats;
 static const bool DEFAULT_ALERTS = true;
 /** Maximum reorg length we will accept before we shut down and alert the user. */
 static const unsigned int MAX_REORG_LENGTH = COINBASE_MATURITY - 1;
+/** Default for DEFAULT_WHITELISTRELAY. */
+static const bool DEFAULT_WHITELISTRELAY = true;
+/** Default for DEFAULT_WHITELISTFORCERELAY. */
+static const bool DEFAULT_WHITELISTFORCERELAY = true;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
 static const unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100;
 //! -maxtxfee default
@@ -108,6 +112,14 @@ static const unsigned int WITNESS_WRITE_INTERVAL = 10 * 60;
 static const unsigned int WITNESS_WRITE_UPDATES = 10000;
 /** Maximum length of reject messages. */
 static const unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
+/** Average delay between local address broadcasts in seconds. */
+static const unsigned int AVG_LOCAL_ADDRESS_BROADCAST_INTERVAL = 24 * 24 * 60;
+/** Average delay between peer address broadcasts in seconds. */
+static const unsigned int AVG_ADDRESS_BROADCAST_INTERVAL = 30;
+/** Average delay between trickled inventory broadcasts in seconds.
+ *  Blocks, whitelisted receivers, and a random 25% of transactions bypass this. */
+static const unsigned int AVG_INVENTORY_BROADCAST_INTERVAL = 5;
+
 static const unsigned int DEFAULT_LIMITFREERELAY = 15;
 static const bool DEFAULT_RELAYPRIORITY = false;
 static const int64_t DEFAULT_MAX_TIP_AGE = 24 * 60 * 60;
@@ -125,6 +137,9 @@ static const bool DEFAULT_NU_REJECT_OLD_VERSIONS = true;
 #define equihash_parameters_acceptable(N, K) \
     ((CBlockHeader::HEADER_SIZE + equihash_solution_size(N, K))*MAX_HEADERS_RESULTS < \
      MAX_PROTOCOL_MESSAGE_LENGTH-1000)
+
+/** Maximum number of headers to announce when relaying blocks with headers message.*/
+static const unsigned int MAX_BLOCKS_TO_ANNOUNCE = 8;
 
 static const bool DEFAULT_PEERBLOOMFILTERS = true;
 static const bool DEFAULT_ENFORCENODEBLOOM = false;
@@ -250,9 +265,8 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom);
  *
  * @param[in]   params          Active chain parameters.
  * @param[in]   pto             The node which we are sending messages to.
- * @param[in]   fSendTrickle    When true send the trickled data, otherwise trickle the data until true.
  */
-bool SendMessages(const Consensus::Params& params, CNode* pto, bool fSendTrickle);
+bool SendMessages(const Consensus::Params& params, CNode* pto);
 /** Run an instance of the script checking thread */
 void ThreadScriptCheck();
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
