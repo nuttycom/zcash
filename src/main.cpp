@@ -1804,7 +1804,7 @@ bool AcceptToMemoryPool(
     }
 
     {
-        CCoinsView dummy;
+        CCoinsViewDummy dummy;
         CCoinsViewCache view(&dummy);
 
         CAmount nValueIn = 0;

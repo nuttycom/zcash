@@ -448,6 +448,7 @@ class FakeCoinsViewDB : public CCoinsView {
     uint256 hash;
     SproutMerkleTree sproutTree;
     SaplingMerkleTree saplingTree;
+    OrchardMerkleTree orchardTree;
 
 public:
     FakeCoinsViewDB(std::string dbName, uint256& hash) : db(GetDataDir() / dbName, 100, false, false), hash(hash) {}
@@ -463,6 +464,14 @@ public:
     bool GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const {
         if (rt == saplingTree.root()) {
             tree = saplingTree;
+            return true;
+        }
+        return false;
+    }
+
+    bool GetOrchardAnchorAt(const uint256 &rt, OrchardMerkleTree &tree) const {
+        if (rt == orchardTree.root()) {
+            tree = orchardTree;
             return true;
         }
         return false;
@@ -495,16 +504,22 @@ public:
         }
     }
 
+    HistoryIndex GetHistoryLength(uint32_t epochId) const { return 0; }
+    HistoryNode GetHistoryAt(uint32_t epochId, HistoryIndex index) const { return HistoryNode(); }
+    uint256 GetHistoryRoot(uint32_t epochId) const { return uint256(); }
+
     bool BatchWrite(CCoinsMap &mapCoins,
                     const uint256 &hashBlock,
                     const uint256 &hashSproutAnchor,
                     const uint256 &hashSaplingAnchor,
+                    const uint256 &hashOrchardAnchor,
                     CAnchorsSproutMap &mapSproutAnchors,
                     CAnchorsSaplingMap &mapSaplingAnchors,
+                    CAnchorsOrchardMap &mapOrchardAnchors,
                     CNullifiersMap &mapSproutNullifiers,
-                    CNullifiersMap &mapSaplingNullifiers) {
-        return false;
-    }
+                    CNullifiersMap &mapSaplingNullifiers,
+                    CNullifiersMap &mapOrchardNullifiers,
+                    CHistoryCacheMap &historyCacheMap) { return false; }
 
     bool GetStats(CCoinsStats &stats) const {
         return false;
