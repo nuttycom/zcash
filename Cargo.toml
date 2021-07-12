@@ -64,9 +64,9 @@ codegen-units = 1
 [patch.crates-io]
 ed25519-zebra = { git = "https://github.com/ZcashFoundation/ed25519-zebra.git", rev = "d3512400227a362d08367088ffaa9bd4142a69c7" }
 halo2 = { git = "https://github.com/zcash/halo2.git", rev = "d04b532368d05b505e622f8cac4c0693574fbd93" }
-incrementalmerkletree = { git = "https://github.com/zcash/incrementalmerkletree", rev = "8b59049f1746827ffa3763efa8af948f680491d0" }
-orchard = { git = "https://github.com/zcash/orchard.git", rev = "74df35ce890726478983fb892ff38a5e44ceb08a" }
-zcash_history = { git = "https://github.com/zcash/librustzcash.git", rev = "3cab105c9c3bf4ba31f779095d939ad0c7057539" }
-zcash_note_encryption = { git = "https://github.com/zcash/librustzcash.git", rev = "3cab105c9c3bf4ba31f779095d939ad0c7057539" }
-zcash_primitives = { git = "https://github.com/zcash/librustzcash.git", rev = "3cab105c9c3bf4ba31f779095d939ad0c7057539" }
-zcash_proofs = { git = "https://github.com/zcash/librustzcash.git", rev = "3cab105c9c3bf4ba31f779095d939ad0c7057539" }
+incrementalmerkletree = { git = "https://github.com/nuttycom/incrementalmerkletree", rev = "4bbefeda055ade407731418d44a7c32782670d7a" }
+orchard = { git = "https://github.com/nuttycom/orchard.git", rev = "06c35703a9a827bcf61efc00bfcb6c7df0032ba8" }
+zcash_history = { git = "https://github.com/nuttycom/librustzcash.git", rev = "a70b65873715c98fd0aa0dad743b81c6934236ed" }
+zcash_note_encryption = { git = "https://github.com/nuttycom/librustzcash.git", rev = "a70b65873715c98fd0aa0dad743b81c6934236ed" }
+zcash_primitives = { git = "https://github.com/nuttycom/librustzcash.git", rev = "a70b65873715c98fd0aa0dad743b81c6934236ed" }
+zcash_proofs = { git = "https://github.com/nuttycom/librustzcash.git", rev = "a70b65873715c98fd0aa0dad743b81c6934236ed" }
