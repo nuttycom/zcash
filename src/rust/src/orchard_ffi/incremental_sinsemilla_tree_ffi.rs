@@ -10,7 +10,7 @@ use std::ptr;
 use orchard::{bundle::Authorized, tree::MerkleCrhOrchardOutput};
 
 use zcash_primitives::{
-    merkle_tree::incremental::{read_frontier_v1, write_frontier_v1},
+    merkle_tree::incremental::{read_frontier_v1, write_frontier_v1, read_tree, write_tree},
     transaction::components::Amount,
 };
 
@@ -73,17 +73,17 @@ pub extern "C" fn orchard_merkle_frontier_parse(
 
 #[no_mangle]
 pub extern "C" fn orchard_merkle_frontier_serialize(
-    tree: *const bridgetree::Frontier<MerkleCrhOrchardOutput, MERKLE_DEPTH>,
+    frontier: *const bridgetree::Frontier<MerkleCrhOrchardOutput, MERKLE_DEPTH>,
     stream: Option<StreamObj>,
     write_cb: Option<WriteCb>,
 ) -> bool {
-    let tree = unsafe {
-        tree.as_ref()
+    let frontier = unsafe {
+        frontier.as_ref()
             .expect("Orchard note commitment tree pointer may not be null.")
     };
 
     let writer = CppStreamWriter::from_raw_parts(stream, write_cb.unwrap());
-    match write_frontier_v1(tree, writer) {
+    match write_frontier_v1(writer, frontier) {
         Ok(()) => true,
         Err(e) => {
             error!("{}", e);
@@ -186,42 +186,42 @@ pub extern "C" fn incremental_sinsemilla_tree_free(
     }
 }
 
-//#[no_mangle]
-//pub extern "C" fn incremental_sinsemilla_tree_parse(
-//    stream: Option<StreamObj>,
-//    read_cb: Option<ReadCb>,
-//) -> *mut BridgeTree<MerkleCrhOrchardOutput, MERKLE_DEPTH> {
-//    let reader = CppStreamReader::from_raw_parts(stream, read_cb.unwrap());
-//
-//    match bincode::deserialize_from(reader) {
-//        Ok(parsed) => Box::into_raw(Box::new(parsed)),
-//        Err(e) => {
-//            error!("Failed to parse Orchard bundle: {}", e);
-//            ptr::null_mut()
-//        }
-//    }
-//}
-//
-//#[no_mangle]
-//pub extern "C" fn incremental_sinsemilla_tree_serialize(
-//    tree: *const BridgeTree<MerkleCrhOrchardOutput, MERKLE_DEPTH>,
-//    stream: Option<StreamObj>,
-//    write_cb: Option<WriteCb>,
-//) -> bool {
-//    let tree = unsafe {
-//        tree.as_ref()
-//            .expect("Orchard note commitment tree pointer may not be null.")
-//    };
-//
-//    let writer = CppStreamWriter::from_raw_parts(stream, write_cb.unwrap());
-//    match bincode::serialize_into(writer, tree) {
-//        Ok(()) => true,
-//        Err(e) => {
-//            error!("{}", e);
-//            false
-//        }
-//    }
-//}
+#[no_mangle]
+pub extern "C" fn incremental_sinsemilla_tree_parse(
+    stream: Option<StreamObj>,
+    read_cb: Option<ReadCb>,
+) -> *mut BridgeTree<MerkleCrhOrchardOutput, MERKLE_DEPTH> {
+    let reader = CppStreamReader::from_raw_parts(stream, read_cb.unwrap());
+
+    match read_tree(reader) {
+        Ok(parsed) => Box::into_raw(Box::new(parsed)),
+        Err(e) => {
+            error!("Failed to parse Orchard bundle: {}", e);
+            ptr::null_mut()
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn incremental_sinsemilla_tree_serialize(
+    tree: *const BridgeTree<MerkleCrhOrchardOutput, MERKLE_DEPTH>,
+    stream: Option<StreamObj>,
+    write_cb: Option<WriteCb>,
+) -> bool {
+    let tree = unsafe {
+        tree.as_ref()
+            .expect("Orchard note commitment tree pointer may not be null.")
+    };
+
+    let writer = CppStreamWriter::from_raw_parts(stream, write_cb.unwrap());
+    match write_tree(writer, tree) {
+        Ok(()) => true,
+        Err(e) => {
+            error!("{}", e);
+            false
+        }
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn incremental_sinsemilla_tree_append_bundle(
