@@ -616,6 +616,8 @@ void CWallet::ChainTipAdded(const CBlockIndex *pindex,
 
 void CWallet::ChainTip(const CBlockIndex *pindex,
                        const CBlock *pblock,
+                       // If this is None, it indicates a rollback and we will decrement the
+                       // witnesses / rewind the tree
                        std::optional<std::pair<SproutMerkleTree, SaplingMerkleTree>> added)
 {
     if (added) {
@@ -1196,6 +1198,8 @@ void CWallet::IncrementNoteWitnesses(const CBlockIndex* pindex,
        ::CopyPreviousWitnesses(wtxItem.second.mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize);
     }
 
+    // TODO ORCHARD: Add a checkpoint before we add information from the new block
+
     if (nWitnessCacheSize < WITNESS_CACHE_SIZE) {
         nWitnessCacheSize += 1;
     }
@@ -1245,6 +1249,7 @@ void CWallet::IncrementNoteWitnesses(const CBlockIndex* pindex,
                 ::WitnessNoteIfMine(mapWallet[hash].mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize, outPoint, saplingTree.witness());
             }
         }
+        // TODO: Orchard
     }
 
     // Update witness heights
@@ -1296,6 +1301,8 @@ void DecrementNoteWitnesses(NoteDataMap& noteDataMap, int indexHeight, int64_t n
             assert((nWitnessCacheSize - 1) >= nd->witnesses.size());
         }
     }
+
+    // TODO ORCHARD: rewind to the last checkpoint
 }
 
 void CWallet::DecrementNoteWitnesses(const CBlockIndex* pindex)
@@ -1525,6 +1532,9 @@ void CWallet::UpdateSaplingNullifierNoteMapWithTx(CWalletTx& wtx) {
         SaplingNoteData nd = item.second;
 
         if (nd.witnesses.empty()) {
+            // The Sapling nullifier depends upon the position of the note in the
+            // note commitment tree.
+            //
             // If there are no witnesses, erase the nullifier and associated mapping.
             if (item.second.nullifier) {
                 mapSaplingNullifiersToNotes.erase(item.second.nullifier.value());

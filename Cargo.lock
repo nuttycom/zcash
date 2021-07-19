@@ -285,7 +285,7 @@ checksum = "69323bff1fb41c635347b8ead484a5ca6c3f11914d784170b158d8449ab07f8e"
 dependencies = [
  "cfg-if 0.1.10",
  "crossbeam-channel 0.4.4",
- "crossbeam-deque",
+ "crossbeam-deque 0.7.3",
  "crossbeam-epoch 0.8.2",
  "crossbeam-queue",
  "crossbeam-utils 0.7.2",
@@ -320,6 +320,17 @@ dependencies = [
  "crossbeam-epoch 0.8.2",
  "crossbeam-utils 0.7.2",
  "maybe-uninit",
+]
+
+[[package]]
+name = "crossbeam-deque"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94af6efb46fef72616855b036a624cf27ba656ffc9be1b9a3c931cfc7749a9a9"
+dependencies = [
+ "cfg-if 1.0.0",
+ "crossbeam-epoch 0.9.5",
+ "crossbeam-utils 0.8.5",
 ]
 
 [[package]]
@@ -480,6 +491,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "either"
+version = "1.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+
+[[package]]
 name = "endian-type"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -627,15 +644,14 @@ dependencies = [
 [[package]]
 name = "halo2"
 version = "0.0.1"
-source = "git+https://github.com/zcash/halo2.git?rev=d04b532368d05b505e622f8cac4c0693574fbd93#d04b532368d05b505e622f8cac4c0693574fbd93"
+source = "git+https://github.com/zcash/halo2.git?rev=dda1be47316c32585c0d974c0b6401108714875d#dda1be47316c32585c0d974c0b6401108714875d"
 dependencies = [
  "blake2b_simd",
- "crossbeam-utils 0.8.5",
  "ff",
  "group",
- "num_cpus",
  "pasta_curves",
  "rand",
+ "rayon",
 ]
 
 [[package]]
@@ -1050,10 +1066,11 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 [[package]]
 name = "orchard"
 version = "0.0.0"
-source = "git+https://github.com/zcash/orchard.git?rev=74df35ce890726478983fb892ff38a5e44ceb08a#74df35ce890726478983fb892ff38a5e44ceb08a"
+source = "git+https://github.com/nuttycom/orchard.git?rev=257a1c353c5c923965cafa5b41c39e1bac68fa0f#257a1c353c5c923965cafa5b41c39e1bac68fa0f"
 dependencies = [
  "aes",
  "arrayvec 0.7.1",
+ "bigint",
  "bitvec",
  "blake2b_simd",
  "ff",
@@ -1278,6 +1295,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c27cb5785b85bd05d4eb171556c9a1a514552e26123aeae6bb7d811353148026"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "rayon"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c06aca804d41dbc8ba42dfd964f0d01334eceb64314b9ecf7c5fad5188a06d90"
+dependencies = [
+ "autocfg",
+ "crossbeam-deque 0.8.0",
+ "either",
+ "rayon-core",
+]
+
+[[package]]
+name = "rayon-core"
+version = "1.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d78120e2c850279833f1dd3582f730c4ab53ed95aeaaaa862a2a5c71b1656d8e"
+dependencies = [
+ "crossbeam-channel 0.5.1",
+ "crossbeam-deque 0.8.0",
+ "crossbeam-utils 0.8.5",
+ "lazy_static",
+ "num_cpus",
 ]
 
 [[package]]

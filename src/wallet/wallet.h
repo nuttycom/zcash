@@ -317,6 +317,31 @@ public:
     }
 };
 
+// OrchardNoteData that keeps track of how we decrypted an Orchard decrypted note.
+// It stores just the IVK and the (cached) nullifier; witness data
+// will be stored on the global tree.
+class OrchardNoteData
+{
+private:
+    libzcash::OrchardIncomingViewingKey ivk;
+    uint256 nullifier;
+public:
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        int nVersion = s.GetVersion();
+        // TODO: what's this about?
+        //if (!(s.GetType() & SER_GETHASH)) {
+        //    READWRITE(nVersion);
+        //}
+
+        //TODO:
+        // READWRITE(ivk);
+        READWRITE(nullifier);
+    }
+};
+
 typedef std::map<JSOutPoint, SproutNoteData> mapSproutNoteData_t;
 typedef std::map<SaplingOutPoint, SaplingNoteData> mapSaplingNoteData_t;
 
@@ -399,7 +424,7 @@ public:
     bool AcceptToMemoryPool(bool fLimitFree=true, bool fRejectAbsurdFee=true);
 };
 
-/** 
+/**
  * A transaction with a bunch of additional info that only the owner cares about.
  * It includes any unrecorded transactions needed to link it back to the block chain.
  */
@@ -744,7 +769,7 @@ private:
 };
 
 
-/** 
+/**
  * A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
  * and provides the ability to create new transactions.
  */
@@ -1153,7 +1178,7 @@ public:
     bool LoadCryptedSaplingZKey(const libzcash::SaplingExtendedFullViewingKey &extfvk,
                                 const std::vector<unsigned char> &vchCryptedSecret);
 
-    /** 
+    /**
      * Increment the next transaction order id
      * @return next transaction order id
      */
@@ -1302,7 +1327,7 @@ public:
         LOCK(cs_wallet);
         mapRequestCount[hash] = 0;
     };
-    
+
     unsigned int GetKeyPoolSize()
     {
         AssertLockHeld(cs_wallet); // setKeyPool
@@ -1328,8 +1353,8 @@ public:
 
     //! Verify the wallet database and perform salvage if required
     static bool Verify();
-    
-    /** 
+
+    /**
      * Address book entry changed.
      * @note called with lock cs_wallet held.
      */
@@ -1338,7 +1363,7 @@ public:
             const std::string &purpose,
             ChangeType status)> NotifyAddressBookChanged;
 
-    /** 
+    /**
      * Wallet transaction added, removed or updated.
      * @note called with lock cs_wallet held.
      */
@@ -1379,7 +1404,7 @@ public:
     bool LoadHDSeed(const HDSeed& key);
     /* Set the current encrypted HD seed, without saving it to disk (used by LoadWallet) */
     bool LoadCryptedHDSeed(const uint256& seedFp, const std::vector<unsigned char>& seed);
-    
+
     /* Find notes filtered by payment address, min depth, ability to spend */
     void GetFilteredNotes(std::vector<SproutNoteEntry>& sproutEntries,
                           std::vector<SaplingNoteEntry>& saplingEntries,
@@ -1435,7 +1460,7 @@ public:
 };
 
 
-/** 
+/**
  * Account information.
  * Stored in wallet with key "acc"+string account name.
  */
@@ -1549,7 +1574,7 @@ private:
     std::optional<std::string> hdKeypath; // currently sapling only
     std::optional<std::string> seedFpStr; // currently sapling only
     bool log;
-public: 
+public:
     AddSpendingKeyToWallet(CWallet *wallet, const Consensus::Params &params) :
         m_wallet(wallet), params(params), nTime(1), hdKeypath(std::nullopt), seedFpStr(std::nullopt), log(false) {}
     AddSpendingKeyToWallet(
