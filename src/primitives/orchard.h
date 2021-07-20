@@ -23,6 +23,7 @@ private:
     std::unique_ptr<OrchardBundlePtr, decltype(&orchard_bundle_free)> inner;
 
     friend class OrchardMerkleFrontier;
+    friend class OrchardMerkleTree;
 public:
     OrchardBundle() : inner(nullptr, orchard_bundle_free) {}
 
