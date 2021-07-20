@@ -259,28 +259,28 @@ typedef libzcash::IncrementalMerkleTree<INCREMENTAL_MERKLE_TREE_DEPTH_TESTING, l
 typedef libzcash::IncrementalWitness<SAPLING_INCREMENTAL_MERKLE_TREE_DEPTH, libzcash::PedersenHash> SaplingWitness;
 typedef libzcash::IncrementalWitness<INCREMENTAL_MERKLE_TREE_DEPTH_TESTING, libzcash::PedersenHash> SaplingTestingWitness;
 
-class OrchardMerkleTree
+class OrchardMerkleFrontier
 {
 private:
     /// An incremental Sinsemilla tree; this pointer may never be null.
     /// Memory is allocated by Rust.
     std::unique_ptr<OrchardMerkleFrontierPtr, decltype(&orchard_merkle_frontier_free)> inner;
 public:
-    OrchardMerkleTree() : inner(orchard_merkle_frontier_empty(), orchard_merkle_frontier_free) {}
+    OrchardMerkleFrontier() : inner(orchard_merkle_frontier_empty(), orchard_merkle_frontier_free) {}
 
-    OrchardMerkleTree(OrchardMerkleTree&& frontier) : inner(std::move(frontier.inner)) {}
+    OrchardMerkleFrontier(OrchardMerkleFrontier&& frontier) : inner(std::move(frontier.inner)) {}
 
-    OrchardMerkleTree(const OrchardMerkleTree& frontier) :
+    OrchardMerkleFrontier(const OrchardMerkleFrontier& frontier) :
         inner(orchard_merkle_frontier_clone(frontier.inner.get()), orchard_merkle_frontier_free) {}
 
-    OrchardMerkleTree& operator=(OrchardMerkleTree&& frontier)
+    OrchardMerkleFrontier& operator=(OrchardMerkleFrontier&& frontier)
     {
         if (this != &frontier) {
             inner = std::move(frontier.inner);
         }
         return *this;
     }
-    OrchardMerkleTree& operator=(const OrchardMerkleTree& frontier)
+    OrchardMerkleFrontier& operator=(const OrchardMerkleFrontier& frontier)
     {
         if (this != &frontier) {
             inner.reset(orchard_merkle_frontier_clone(frontier.inner.get()));
