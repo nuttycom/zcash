@@ -331,13 +331,11 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         int nVersion = s.GetVersion();
-        // TODO: what's this about?
-        //if (!(s.GetType() & SER_GETHASH)) {
-        //    READWRITE(nVersion);
-        //}
+        if (!(s.GetType() & SER_GETHASH)) {
+            READWRITE(nVersion);
+        }
 
-        //TODO:
-        // READWRITE(ivk);
+        READWRITE(ivk);
         READWRITE(nullifier);
     }
 };
@@ -903,6 +901,12 @@ protected:
 
     /* the hd chain data model (chain counters) */
     CHDChain hdChain;
+
+    /* The Orchard note commitment tree. Unlike with Sprout and Sapling,
+     * a single note commitment tree is shared across all transactions
+     * and is used to track all notes known by the wallet.
+     */
+    OrchardMerkleTree orchardTree;
 
 public:
     /*

@@ -65,7 +65,7 @@ codegen-units = 1
 ed25519-zebra = { git = "https://github.com/ZcashFoundation/ed25519-zebra.git", rev = "d3512400227a362d08367088ffaa9bd4142a69c7" }
 halo2 = { git = "https://github.com/zcash/halo2.git", rev = "dda1be47316c32585c0d974c0b6401108714875d" }
 incrementalmerkletree = { git = "https://github.com/nuttycom/incrementalmerkletree", rev = "f78debc53554d8be75e6f6e3528cc29916179e02" }
-orchard = { git = "https://github.com/nuttycom/orchard.git", rev = "257a1c353c5c923965cafa5b41c39e1bac68fa0f" }
+orchard = { git = "https://github.com/nuttycom/orchard.git", rev = "6b179bca4fedfa746f866f5b88593d1e7dff9772" }
 zcash_address = { git = "https://github.com/nuttycom/librustzcash.git", rev = "9759813c873dd10b65755de7d9c32b719466a2b2" }
 zcash_history = { git = "https://github.com/nuttycom/librustzcash.git", rev = "9759813c873dd10b65755de7d9c32b719466a2b2" }
 zcash_note_encryption = { git = "https://github.com/nuttycom/librustzcash.git", rev = "9759813c873dd10b65755de7d9c32b719466a2b2" }
