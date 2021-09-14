@@ -981,16 +981,6 @@ public:
         return (vin.size() == 1 && vin[0].prevout.IsNull());
     }
 
-    friend bool operator==(const CTransaction& a, const CTransaction& b)
-    {
-        return a.wtxid.hash == b.wtxid.hash;
-    }
-
-    friend bool operator!=(const CTransaction& a, const CTransaction& b)
-    {
-        return a.wtxid.hash != b.wtxid.hash;
-    }
-
     std::string ToString() const;
 };
 

@@ -416,7 +416,7 @@ void CTxMemPool::removeConflicts(const CTransaction &tx, std::list<CTransaction>
         std::map<COutPoint, CInPoint>::iterator it = mapNextTx.find(txin.prevout);
         if (it != mapNextTx.end()) {
             const CTransaction &txConflict = *it->second.ptx;
-            if (txConflict != tx)
+            if (txConflict.GetHash() != tx.GetHash())
             {
                 remove(txConflict, removed, true);
             }
@@ -428,7 +428,7 @@ void CTxMemPool::removeConflicts(const CTransaction &tx, std::list<CTransaction>
             std::map<uint256, const CTransaction*>::iterator it = mapSproutNullifiers.find(nf);
             if (it != mapSproutNullifiers.end()) {
                 const CTransaction &txConflict = *it->second;
-                if (txConflict != tx) {
+                if (txConflict.GetHash() != tx.GetHash()) {
                     remove(txConflict, removed, true);
                 }
             }
@@ -438,7 +438,7 @@ void CTxMemPool::removeConflicts(const CTransaction &tx, std::list<CTransaction>
         std::map<uint256, const CTransaction*>::iterator it = mapSaplingNullifiers.find(spendDescription.nullifier);
         if (it != mapSaplingNullifiers.end()) {
             const CTransaction &txConflict = *it->second;
-            if (txConflict != tx) {
+            if (txConflict.GetHash() != tx.GetHash()) {
                 remove(txConflict, removed, true);
             }
         }
@@ -447,7 +447,7 @@ void CTxMemPool::removeConflicts(const CTransaction &tx, std::list<CTransaction>
         std::map<uint256, const CTransaction*>::iterator it = mapOrchardNullifiers.find(orchardNullifier);
         if (it != mapOrchardNullifiers.end()) {
             const CTransaction &txConflict = *it->second;
-            if (txConflict != tx) {
+            if (txConflict.GetHash() != tx.GetHash()) {
                 remove(txConflict, removed, true);
             }
         }

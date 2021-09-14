@@ -668,7 +668,7 @@ TEST(ChecktransactionTests, OverwinterConstructors) {
     EXPECT_EQ(tx2.fOverwintered, mtx.fOverwintered);
     EXPECT_EQ(tx2.nVersionGroupId, mtx.nVersionGroupId);
     EXPECT_EQ(tx2.nExpiryHeight, mtx.nExpiryHeight);
-    EXPECT_TRUE(tx2 == tx);
+    EXPECT_TRUE(tx2.GetHash() == tx.GetHash());
 }
 
 TEST(ChecktransactionTests, OverwinterSerialization) {
