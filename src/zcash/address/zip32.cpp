@@ -33,9 +33,9 @@ MnemonicSeed MnemonicSeed::Random(uint32_t bip44CoinType, Language language, siz
         MnemonicSeed seed(language, mnemonic);
 
         // Verify that the seed data is valid entropy for unified spending keys at
-        // account 0 and account 0x7FFFFFFE
+        // account 0 and transparent spending keys at account 0x7FFFFFFE
         if (libzcash::UnifiedSpendingKey::Derive(seed, bip44CoinType, 0).has_value() &&
-            libzcash::DeriveZip32TransparentSpendingKey(seed, bip44CoinType, ZCASH_LEGACY_TRANSPARENT_ACCOUNT).has_value())  {
+            libzcash::DeriveZip32TransparentSpendingKey(seed, bip44CoinType, ZCASH_LEGACY_ACCOUNT).has_value())  {
             return seed;
         }
     }
@@ -182,6 +182,34 @@ std::pair<SaplingExtendedSpendingKey, CKeyMetadata> SaplingExtendedSpendingKey::
     int64_t nCreationTime = GetTime();
     CKeyMetadata metadata(nCreationTime);
     metadata.hdKeypath = "m/32'/" + std::to_string(bip44CoinType) + "'/" + std::to_string(accountId) + "'";
+    metadata.seedFp = seed.Fingerprint();
+
+    return std::make_pair(xsk, metadata);
+}
+
+std::pair<SaplingExtendedSpendingKey, CKeyMetadata> SaplingExtendedSpendingKey::Legacy(const HDSeed& seed, uint32_t bip44CoinType, uint32_t addressIndex) {
+    auto m = Master(seed);
+
+    // We use a fixed keypath scheme of m/32'/coin_type'/account'/addressIndex'
+
+    // Derive m/32'
+    auto m_32h = m.Derive(32 | ZIP32_HARDENED_KEY_LIMIT);
+    // Derive m/32'/coin_type'
+    auto m_32h_cth = m_32h.Derive(bip44CoinType | ZIP32_HARDENED_KEY_LIMIT);
+
+    // Derive account key at the legacy account index
+    auto m_32h_cth_l = m_32h_cth.Derive(ZCASH_LEGACY_ACCOUNT | ZIP32_HARDENED_KEY_LIMIT);
+
+    // Derive key at the specified address index
+    auto xsk = m_32h_cth_l.Derive(addressIndex | ZIP32_HARDENED_KEY_LIMIT);
+
+    // Create new metadata
+    int64_t nCreationTime = GetTime();
+    CKeyMetadata metadata(nCreationTime);
+    metadata.hdKeypath = "m/32'/"
+        + std::to_string(bip44CoinType) + "'/"
+        + std::to_string(ZCASH_LEGACY_ACCOUNT) + "'/"
+        + std::to_string(addressIndex) + "'";
     metadata.seedFp = seed.Fingerprint();
 
     return std::make_pair(xsk, metadata);

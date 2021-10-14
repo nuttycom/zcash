@@ -48,6 +48,7 @@ private:
     uint256 seedFp;
     int64_t nCreateTime; // 0 means unknown
     uint32_t accountCounter;
+    uint32_t legacySaplingKeyCounter;
 
     CHDChain() { SetNull(); }
 
@@ -57,6 +58,7 @@ private:
         seedFp.SetNull();
         nCreateTime = 0;
         accountCounter = 0;
+        legacySaplingKeyCounter = 0;
     }
 public:
     static const int VERSION_HD_BASE = 1;
@@ -73,6 +75,7 @@ public:
         READWRITE(seedFp);
         READWRITE(nCreateTime);
         READWRITE(accountCounter);
+        READWRITE(legacySaplingKeyCounter);
     }
 
     template <typename Stream>
@@ -92,6 +95,14 @@ public:
 
     uint32_t IncrementAccountCounter() {
         return ++accountCounter;
+    }
+
+    uint32_t GetLegacySaplingKeyCounter() const {
+        return legacySaplingKeyCounter;
+    }
+
+    uint32_t IncrementLegacySaplingKeyCounter() {
+        return ++legacySaplingKeyCounter;
     }
 };
 
@@ -151,11 +162,6 @@ public:
     bool WriteMnemonicSeed(const MnemonicSeed& seed);
     bool WriteCryptedMnemonicSeed(const uint256& seedFp, const std::vector<unsigned char>& vchCryptedSecret);
     bool WriteMnemonicHDChain(const CHDChain& chain);
-
-    //! Write the legacy hdchain metadata to the database
-    //!
-    //! TODO: remove when generation of new legacy-seed-based keys has been disabled.
-    bool WriteLegacyHDChain(const CHDChain& chain);
 
     /// Write spending key to wallet database, where key is payment address and value is spending key.
     bool WriteZKey(const libzcash::SproutPaymentAddress& addr, const libzcash::SproutSpendingKey& key, const CKeyMetadata &keyMeta);
