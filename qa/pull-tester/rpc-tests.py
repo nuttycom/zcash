@@ -76,6 +76,7 @@ BASE_SCRIPTS= [
     'wallet_import_export.py',
     'wallet_isfromme.py',
     'wallet_orchard_persistence.py',
+    'wallet_orchard_gc.py',
     'wallet_nullifiers.py',
     'wallet_sapling.py',
     'wallet_sendmany_any_taddr.py',
