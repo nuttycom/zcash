@@ -13,6 +13,7 @@
   - [Deprecated Features](user/deprecation.md)
 - [Developer Documentation](dev.md)
   - [DNS Seeders](dev/dnsseed-policy.md)
+  - [Coding Standards](dev/coding_standards.md)
   - [Rust in `zcashd`](dev/rust.md)
   - [Regtest Tips And Hints](dev/regtest.md)
   - [Platform Tier Policy](dev/platform-tier-policy.md)
