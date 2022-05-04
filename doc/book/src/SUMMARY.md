@@ -14,6 +14,8 @@
 - [Developer Documentation](dev.md)
   - [DNS Seeders](dev/dnsseed-policy.md)
   - [Coding Standards](dev/coding_standards.md)
+  - [Dependencies](dev/dependencies.md)
+  - [Multithreading](dev/multithreading.md)
   - [Rust in `zcashd`](dev/rust.md)
   - [Regtest Tips And Hints](dev/regtest.md)
   - [Platform Tier Policy](dev/platform-tier-policy.md)
