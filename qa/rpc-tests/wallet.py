@@ -6,8 +6,8 @@
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
-from test_framework.util import assert_equal, start_nodes, start_node, \
-    connect_nodes_bi, sync_blocks, sync_mempools
+from test_framework.util import assert_equal, start_nodes, start_node, stop_nodes, \
+    connect_nodes_bi, sync_blocks, sync_mempools, wait_bitcoinds
 
 from decimal import Decimal
 
@@ -203,23 +203,40 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[2].getbalance("*", 1, False, True), 999800000)
 
         # send from node 0 to node 2 taddr
-        mytaddr = self.nodes[2].getnewaddress()
-        mytxid = self.nodes[0].sendtoaddress(mytaddr, 10.0)
+        n2taddr = self.nodes[2].getnewaddress()
+        mytxid = self.nodes[0].sendtoaddress(n2taddr, 10.0)
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
 
-        mybalance = self.nodes[2].z_getbalance(mytaddr)
+        mybalance = self.nodes[2].z_getbalance(n2taddr)
         assert_equal(mybalance, Decimal('10.0'))
 
         # check integer balances from z_getbalance
-        assert_equal(self.nodes[2].z_getbalance(mytaddr, 1, True), 1000000000)
+        assert_equal(self.nodes[2].z_getbalance(n2taddr, 1, True), 1000000000)
 
         mytxdetails = self.nodes[2].gettransaction(mytxid)
         myvjoinsplits = mytxdetails["vjoinsplit"]
         assert_equal(0, len(myvjoinsplits))
         assert("joinSplitPubKey" not in mytxdetails)
         assert("joinSplitSig" not in mytxdetails)
+
+        # check the final balances
+        n2_final_balance = self.nodes[2].getbalance()
+        n0_final_balance = self.nodes[0].getbalance()
+        assert_equal(self.nodes[2].getbalance("*"), n2_final_balance)
+        assert_equal(self.nodes[0].getbalance("*"), n0_final_balance)
+
+        # shut down the nodes, then restart with -reindex
+        stop_nodes(self.nodes)
+        wait_bitcoinds()
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir, [["-reindex"]] * self.num_nodes)
+
+        # ensure the restored balances are the same
+        assert_equal(self.nodes[2].getbalance(), n2_final_balance)
+        assert_equal(self.nodes[0].getbalance(), n0_final_balance)
+        assert_equal(self.nodes[2].getbalance("*"), n2_final_balance)
+        assert_equal(self.nodes[0].getbalance("*"), n0_final_balance)
 
 if __name__ == '__main__':
     WalletTest ().main ()
