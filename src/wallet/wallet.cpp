@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <numeric>
+#include <rust/metrics.h>
 #include <variant>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -2627,10 +2628,13 @@ void CWallet::IncrementNoteWitnesses(
         bool performOrchardWalletUpdates)
 {
     LOCK(cs_wallet);
+    int64_t inwTime0 = GetTimeMicros();
     for (std::pair<const uint256, CWalletTx>& wtxItem : mapWallet) {
        ::CopyPreviousWitnesses(wtxItem.second.mapSproutNoteData, pindex->nHeight, nWitnessCacheSize);
        ::CopyPreviousWitnesses(wtxItem.second.mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize);
     }
+    int64_t inwTime1 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.copy_witnesses.seconds", (inwTime1 - inwTime0) * 0.000001);
 
     if (performOrchardWalletUpdates && consensus.NetworkUpgradeActive(pindex->nHeight, Consensus::UPGRADE_NU5)) {
         if (!orchardWallet.GetLastCheckpointHeight().has_value()) {
@@ -2638,6 +2642,8 @@ void CWallet::IncrementNoteWitnesses(
         }
         assert(orchardWallet.CheckpointNoteCommitmentTree(pindex->nHeight));
     }
+    int64_t inwTime2 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.checkpoint_orchard_tree.seconds", (inwTime2 - inwTime1) * 0.000001);
 
     if (nWitnessCacheSize < WITNESS_CACHE_SIZE) {
         nWitnessCacheSize += 1;
@@ -2650,6 +2656,7 @@ void CWallet::IncrementNoteWitnesses(
         pblock = &block;
     }
 
+    int64_t inwTime3 = GetTimeMicros();
     for (const CTransaction& tx : pblock->vtx) {
         auto hash = tx.GetHash();
         bool txIsOurs = mapWallet.count(hash);
@@ -2689,6 +2696,8 @@ void CWallet::IncrementNoteWitnesses(
             }
         }
     }
+    int64_t inwTime4 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.append_commitments.sprout_sapling.seconds", (inwTime4 - inwTime3) * 0.000001);
 
     // If we're at or beyond NU5 activation, update the Orchard note commitment tree.
     if (performOrchardWalletUpdates && consensus.NetworkUpgradeActive(pindex->nHeight, Consensus::UPGRADE_NU5)) {
@@ -2700,12 +2709,17 @@ void CWallet::IncrementNoteWitnesses(
         // https://github.com/zcash/zcash/issues/6052
         //assert(pindex->hashFinalOrchardRoot == orchardWallet.GetLatestAnchor());
     }
+    int64_t inwTime5 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.append_commitments.orchard.seconds", (inwTime5 - inwTime4) * 0.000001);
 
     // Update witness heights
     for (std::pair<const uint256, CWalletTx>& wtxItem : mapWallet) {
         ::UpdateWitnessHeights(wtxItem.second.mapSproutNoteData, pindex->nHeight, nWitnessCacheSize);
         ::UpdateWitnessHeights(wtxItem.second.mapSaplingNoteData, pindex->nHeight, nWitnessCacheSize);
     }
+
+    int64_t inwTime6 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.total.seconds", (inwTime6 - inwTime0) * 0.000001);
 
     // For performance reasons, we write out the witness cache in
     // CWallet::SetBestChain() (which also ensures that overall consistency
