@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <map>
 #include <optional>
+#include <rust/metrics.h>
 #include <set>
 #include <stdexcept>
 #include <stdint.h>
@@ -1262,6 +1263,7 @@ protected:
             return;
         }
         try {
+            int64_t sbcTime0 = GetTimeMicros();
             LOCK(cs_wallet);
             for (std::pair<const uint256, CWalletTx>& wtxItem : mapWallet) {
                 auto wtx = wtxItem.second;
@@ -1278,12 +1280,17 @@ protected:
                 }
             }
             // Add persistence of Orchard incremental witness tree
+            int64_t sbcTime1 = GetTimeMicros();
             orchardWallet.GarbageCollect();
+            int64_t sbcTime2 = GetTimeMicros();
+            MetricsHistogram("zcash.wallet.orchard.gc.seconds", (sbcTime2 - sbcTime1) * 0.000001);
             if (!walletdb.WriteOrchardWitnesses(orchardWallet)) {
                 LogPrintf("SetBestChain(): Failed to write Orchard witnesses, aborting atomic write\n");
                 walletdb.TxnAbort();
                 return;
             }
+            int64_t sbcTime3 = GetTimeMicros();
+            MetricsHistogram("zcash.wallet.orchard.write_witness.seconds", (sbcTime3 - sbcTime2) * 0.000001);
             if (!walletdb.WriteWitnessCacheSize(nWitnessCacheSize)) {
                 LogPrintf("SetBestChain(): Failed to write nWitnessCacheSize, aborting atomic write\n");
                 walletdb.TxnAbort();
@@ -1294,6 +1301,8 @@ protected:
                 walletdb.TxnAbort();
                 return;
             }
+            int64_t sbcTime4 = GetTimeMicros();
+            MetricsHistogram("zcash.wallet.writes.seconds", (sbcTime4 - sbcTime0) * 0.000001);
         } catch (const std::exception &exc) {
             // Unexpected failure
             LogPrintf("SetBestChain(): Unexpected error during atomic write:\n");
