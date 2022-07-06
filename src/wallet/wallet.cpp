@@ -36,6 +36,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <numeric>
+#include <rust/metrics.h>
 #include <variant>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -2703,7 +2704,10 @@ static void IncrementNoteWitnesses(std::map<OutPoint, NoteData>& noteDataMap,
     // For any notes that still have stored witnesses (and thus are still being
     // incremented), copy their previous witness so we have a starting point to
     // which we can append this block's commitments.
+    int64_t inwTime0 = GetTimeMicros();
     ::CopyPreviousWitnesses(noteDataMap, chainHeight, nPrevWitnessCacheSize);
+    int64_t inwTime1 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.copy_witnesses.seconds", (inwTime1 - inwTime0) * 0.000001);
 
     // Append new notes commitments.
     for (const auto& noteComm : noteCommitments) {
@@ -2725,6 +2729,8 @@ void CWallet::IncrementNoteWitnesses(
         bool performOrchardWalletUpdates)
 {
     LOCK(cs_wallet);
+    int64_t inwTime0 = GetTimeMicros();
+
     int chainHeight = pindex->nHeight;
 
     // Set the update cache flag.
@@ -2735,11 +2741,14 @@ void CWallet::IncrementNoteWitnesses(
     const CBlock* pblock {pblockIn};
     CBlock block;
     if (!pblock) {
+        int64_t readBlockT0 = GetTimeMicros();
         if (!ReadBlockFromDisk(block, pindex, consensus)) {
             throw std::runtime_error(
                 strprintf("Can't read block %d from disk (%s)", pindex->nHeight, pindex->GetBlockHash().GetHex()));
         }
         pblock = &block;
+        int64_t readBlockT1 = GetTimeMicros();
+        MetricsHistogram("zcash.wallet.inw.read_block_from_disk.seconds", (readBlockT1 - readBlockT0) * 0.000001);
     }
 
     // We want to minimise the number of times we loop over both the entire block,
@@ -2758,6 +2767,7 @@ void CWallet::IncrementNoteWitnesses(
 
     // 1) Loop over the block txs and gather the note commitments ordered.
     // If the tx is from this wallet, witness it and append the next block note commitments on top.
+    int64_t inwTime3 = GetTimeMicros();
     for (const CTransaction& tx : pblock->vtx) {
         if (tx.vJoinSplit.empty() && tx.vShieldedSpend.empty() && tx.vShieldedOutput.empty()) continue;
         auto hash = tx.GetHash();
@@ -2852,6 +2862,8 @@ void CWallet::IncrementNoteWitnesses(
                                  nPrevWitnessCacheSize,
                                  nWitnessCacheSize);
     }
+    int64_t inwTime4 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.append_commitments.sprout_sapling.seconds", (inwTime4 - inwTime3) * 0.000001);
 
     // If we're at or beyond NU5 activation, initialize if necessary and then
     // update the Orchard note commitment tree.
@@ -2870,6 +2882,11 @@ void CWallet::IncrementNoteWitnesses(
         // https://github.com/zcash/zcash/issues/6052
         //assert(pindex->hashFinalOrchardRoot == orchardWallet.GetLatestAnchor());
     }
+    int64_t inwTime5 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.append_commitments.orchard.seconds", (inwTime5 - inwTime4) * 0.000001);
+
+    int64_t inwTime6 = GetTimeMicros();
+    MetricsHistogram("zcash.wallet.inw.total.seconds", (inwTime6 - inwTime0) * 0.000001);
 
     // For performance reasons, we write out the witness cache in
     // CWallet::SetBestChain() (which also ensures that overall consistency
