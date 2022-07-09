@@ -3502,8 +3502,12 @@ bool CWallet::AddToWalletIfInvolvingMe(
         bool fExisted = mapWallet.count(tx.GetHash()) != 0;
         if (fExisted && !fUpdate) return false;
 
+        int64_t t0 = GetTimeMicros();
+
         // Sprout
         auto sproutNoteData = decryptedNotes.sproutNoteData;
+        int64_t t1 = GetTimeMicros();
+        MetricsHistogram("zcash.wallet.scan.sprout.seconds", (t1 - t0) * 0.000001);
 
         // Sapling
         auto saplingNoteData = decryptedNotes.saplingNoteDataAndAddressesToAdd.first;
@@ -3514,12 +3518,16 @@ bool CWallet::AddToWalletIfInvolvingMe(
                 return false;
             }
         }
+        int64_t t2 = GetTimeMicros();
+        MetricsHistogram("zcash.wallet.scan.sapling.seconds", (t2 - t1) * 0.000001);
 
         // Orchard
         std::optional<OrchardWalletTxMeta> orchardTxMeta;
         if (consensus.NetworkUpgradeActive(nHeight, Consensus::UPGRADE_NU5)) {
             orchardTxMeta = orchardWallet.AddNotesIfInvolvingMe(tx);
         }
+        int64_t t3 = GetTimeMicros();
+        MetricsHistogram("zcash.wallet.scan.orchard.seconds", (t3 - t2) * 0.000001);
 
         if (fExisted || IsMine(tx) || IsFromMe(tx) ||
             sproutNoteData.size() > 0 ||
@@ -3549,9 +3557,14 @@ bool CWallet::AddToWalletIfInvolvingMe(
             // startup through our SetBestChain-mechanism
             CWalletDB walletdb(strWalletFile, "r+", false);
 
+            int64_t t4 = GetTimeMicros();
+            MetricsHistogram("zcash.wallet.scan.total.seconds", (t4 - t0) * 0.000001);
             return AddToWallet(wtx, &walletdb);
+        } else {
+            int64_t t4 = GetTimeMicros();
+            MetricsHistogram("zcash.wallet.scan.total.seconds", (t4 - t0) * 0.000001);
+            return false;
         }
-        return false;
     }
 }
 
