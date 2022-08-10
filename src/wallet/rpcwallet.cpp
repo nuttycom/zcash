@@ -3982,7 +3982,15 @@ UniValue z_listreceivedbyaddress(const UniValue& params, bool fHelp)
 
             if (hasSpendingKey) {
                 obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
+
+                auto wtx = pwalletMain->mapWallet[entry.op.hash];
+                auto note_data = wtx.mapSaplingNoteData[entry.op];
+                obj.pushKV("witnessHeight", note_data.witnessHeight);
+                if (note_data.spentHeight.has_value()) {
+                    obj.pushKV("spentHeight", note_data.spentHeight.value());
+                }
             }
+
             result.push_back(obj);
         }
     };

@@ -171,5 +171,25 @@ class WalletSaplingTest(BitcoinTestFramework):
         except JSONRPCException as e:
             assert_equal("Sending funds into the Sprout value pool is not supported by z_sendmany", e.error['message'])
 
+        print(str(self.nodes[1].z_listreceivedbyaddress(saplingAddr1)))
+
+        # Add 100 new Sapling notes to the chain so that old witnesses start to get pruned;
+        n1_acct = self.nodes[1].z_getnewaccount()['account']
+        addr = self.nodes[1].z_getaddressforaccount(n1_acct, ['sapling'])['address']
+        recipients = [{"address": addr, "amount": Decimal('0.0001')}]
+        for i in range(0,110):
+            opid = self.nodes[0].z_sendmany(saplingAddr0, recipients, 1, 0)
+            wait_and_assert_operationid_status(self.nodes[0], opid)
+            self.nodes[0].generate(1)
+            self.sync_all()
+
+        # self.sync_all()
+
+        # Verify the balance on saplingAddr1
+        assert_equal(self.nodes[1].z_getbalanceforaccount(n1_acct)['pools']['sapling']['valueZat'], 1100000)
+
+        print(str(self.nodes[1].z_listreceivedbyaddress(saplingAddr1)))
+        assert(False)
+
 if __name__ == '__main__':
     WalletSaplingTest().main()
