@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="sidebar-visible no-js light">
+<html lang="en" class="light" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -10,7 +10,7 @@
         
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="theme-color" content="#ffffff">
 
         <link rel="icon" href="../favicon.svg">
         <link rel="shortcut icon" href="../favicon.png">
@@ -31,7 +31,7 @@
         <!-- Custom theme stylesheets -->
 
     </head>
-    <body>
+    <body class="sidebar-visible no-js">
     <div id="body-container">
         <!-- Provide site root to javascript -->
         <script>
@@ -61,31 +61,38 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             var html = document.querySelector('html');
-            html.classList.remove('no-js')
             html.classList.remove('light')
             html.classList.add(theme);
-            html.classList.add('js');
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
         </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var html = document.querySelector('html');
+            var body = document.querySelector('body');
             var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
             }
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
                 <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">zcashd</a></li><li class="chapter-item expanded "><a href="../user.html"><strong aria-hidden="true">1.</strong> User Documentation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../user/release-support.html"><strong aria-hidden="true">1.1.</strong> Release Support</a></li><li class="chapter-item expanded "><a href="../user/platform-support.html"><strong aria-hidden="true">1.2.</strong> Platform Support</a></li><li class="chapter-item expanded "><a href="../user/wallet-backup.html"><strong aria-hidden="true">1.3.</strong> Wallet Backup</a></li><li class="chapter-item expanded "><a href="../user/shield-coinbase.html"><strong aria-hidden="true">1.4.</strong> Shielding Coinbase Outputs</a></li><li class="chapter-item expanded "><a href="../user/files.html"><strong aria-hidden="true">1.5.</strong> Data Directory Structure</a></li><li class="chapter-item expanded "><a href="../user/metrics.html" class="active"><strong aria-hidden="true">1.6.</strong> Metrics</a></li><li class="chapter-item expanded "><a href="../user/tor.html"><strong aria-hidden="true">1.7.</strong> Using zcashd with Tor</a></li><li class="chapter-item expanded "><a href="../user/security-warnings.html"><strong aria-hidden="true">1.8.</strong> Security Warnings</a></li><li class="chapter-item expanded "><a href="../user/deprecation.html"><strong aria-hidden="true">1.9.</strong> Deprecated Features</a></li></ol></li><li class="chapter-item expanded "><a href="../dev.html"><strong aria-hidden="true">2.</strong> Developer Documentation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../dev/dnsseed-policy.html"><strong aria-hidden="true">2.1.</strong> DNS Seeders</a></li><li class="chapter-item expanded "><a href="../dev/rust.html"><strong aria-hidden="true">2.2.</strong> Rust in zcashd</a></li><li class="chapter-item expanded "><a href="../dev/regtest.html"><strong aria-hidden="true">2.3.</strong> Regtest Tips And Hints</a></li><li class="chapter-item expanded "><a href="../dev/platform-tier-policy.html"><strong aria-hidden="true">2.4.</strong> Platform Tier Policy</a></li><li class="chapter-item expanded "><a href="../dev/deprecation.html"><strong aria-hidden="true">2.5.</strong> Deprecation Procedure</a></li></ol></li><li class="chapter-item expanded "><a href="../design.html"><strong aria-hidden="true">3.</strong> Design</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../design/chain-state.html"><strong aria-hidden="true">3.1.</strong> Chain State</a></li><li class="chapter-item expanded "><a href="../design/coins-view.html"><strong aria-hidden="true">3.2.</strong> "Coins" View</a></li><li class="chapter-item expanded "><a href="../design/p2p-data-propagation.html"><strong aria-hidden="true">3.3.</strong> P2P Data Propagation</a></li></ol></li></ol>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
         </nav>
 
         <!-- Track and set sidebar scroll position -->
@@ -116,9 +123,9 @@
                                 <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
                             <i class="fa fa-bars"></i>
-                        </button>
+                        </label>
                         <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
                             <i class="fa fa-paint-brush"></i>
                         </button>
@@ -214,7 +221,7 @@ zcash_net_in_bytes_total 3701998
 zcash_net_in_messages 184
 
 # TYPE zcashd_build_info counter
-zcashd_build_info{version=&quot;v4.2.0&quot;} 1
+zcashd_build_info{version="v4.2.0"} 1
 
 # TYPE zcash_chain_verified_block_total counter
 zcash_chain_verified_block_total 162
@@ -234,7 +241,7 @@ charts several of the various metrics exposed by <code>zcashd</code>'s <code>pro
 endpoint. Note that both <code>docker</code> and <code>docker-compose</code> must ordinarily be run
 with superuser permissions (use <code>sudo</code>) when running on Linux.</p>
 <p><code>docker-compose up</code><sup class="footnote-reference"><a href="#1">1</a></sup> will start local instances of <code>prometheus</code> and <code>grafana</code>,
-accessible over HTTP on ports <code>9090</code> and <code>3030</code>, respectively. </p>
+accessible over HTTP on ports <code>9090</code> and <code>3030</code>, respectively.</p>
 <pre><code>cd &lt;zcash_root&gt;/contrib/metrics
 docker-compose up -d
 </code></pre>
@@ -243,8 +250,8 @@ repository for <code>&lt;zcash_root&gt;</code>)</p>
 <p><code>~/.zcash/zcash.conf</code> must be updated to enable <code>prometheus</code> and to allow the
 <code>prometheus</code> server launched via <code>docker-compose</code> to connect to the <code>zcashd</code>
 prometheus endpoint. The following commands can be used to detect the local IP
-address for the <code>prometheus</code> server and add it to the <code>~/.zcash/zcash.conf</code> 
-file. </p>
+address for the <code>prometheus</code> server and add it to the <code>~/.zcash/zcash.conf</code>
+file.</p>
 <p>First, figure out where <code>prometheus</code> is running.</p>
 <pre><code>export PROMETHEUS_DOCKER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' zcashd-prometheus)
 </code></pre>
@@ -298,7 +305,7 @@ Docker Engine manual</a>.</p>
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next" href="../user/tor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../user/tor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -312,7 +319,7 @@ Docker Engine manual</a>.</p>
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next" href="../user/tor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../user/tor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

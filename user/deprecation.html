@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="sidebar-visible no-js light">
+<html lang="en" class="light" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -10,7 +10,7 @@
         
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="theme-color" content="#ffffff" />
+        <meta name="theme-color" content="#ffffff">
 
         <link rel="icon" href="../favicon.svg">
         <link rel="shortcut icon" href="../favicon.png">
@@ -31,7 +31,7 @@
         <!-- Custom theme stylesheets -->
 
     </head>
-    <body>
+    <body class="sidebar-visible no-js">
     <div id="body-container">
         <!-- Provide site root to javascript -->
         <script>
@@ -61,31 +61,38 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             var html = document.querySelector('html');
-            html.classList.remove('no-js')
             html.classList.remove('light')
             html.classList.add(theme);
-            html.classList.add('js');
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
         </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var html = document.querySelector('html');
+            var body = document.querySelector('body');
             var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
             } else {
                 sidebar = 'hidden';
             }
-            html.classList.remove('sidebar-visible');
-            html.classList.add("sidebar-" + sidebar);
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
                 <ol class="chapter"><li class="chapter-item expanded affix "><a href="../index.html">zcashd</a></li><li class="chapter-item expanded "><a href="../user.html"><strong aria-hidden="true">1.</strong> User Documentation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../user/release-support.html"><strong aria-hidden="true">1.1.</strong> Release Support</a></li><li class="chapter-item expanded "><a href="../user/platform-support.html"><strong aria-hidden="true">1.2.</strong> Platform Support</a></li><li class="chapter-item expanded "><a href="../user/wallet-backup.html"><strong aria-hidden="true">1.3.</strong> Wallet Backup</a></li><li class="chapter-item expanded "><a href="../user/shield-coinbase.html"><strong aria-hidden="true">1.4.</strong> Shielding Coinbase Outputs</a></li><li class="chapter-item expanded "><a href="../user/files.html"><strong aria-hidden="true">1.5.</strong> Data Directory Structure</a></li><li class="chapter-item expanded "><a href="../user/metrics.html"><strong aria-hidden="true">1.6.</strong> Metrics</a></li><li class="chapter-item expanded "><a href="../user/tor.html"><strong aria-hidden="true">1.7.</strong> Using zcashd with Tor</a></li><li class="chapter-item expanded "><a href="../user/security-warnings.html"><strong aria-hidden="true">1.8.</strong> Security Warnings</a></li><li class="chapter-item expanded "><a href="../user/deprecation.html" class="active"><strong aria-hidden="true">1.9.</strong> Deprecated Features</a></li></ol></li><li class="chapter-item expanded "><a href="../dev.html"><strong aria-hidden="true">2.</strong> Developer Documentation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../dev/dnsseed-policy.html"><strong aria-hidden="true">2.1.</strong> DNS Seeders</a></li><li class="chapter-item expanded "><a href="../dev/rust.html"><strong aria-hidden="true">2.2.</strong> Rust in zcashd</a></li><li class="chapter-item expanded "><a href="../dev/regtest.html"><strong aria-hidden="true">2.3.</strong> Regtest Tips And Hints</a></li><li class="chapter-item expanded "><a href="../dev/platform-tier-policy.html"><strong aria-hidden="true">2.4.</strong> Platform Tier Policy</a></li><li class="chapter-item expanded "><a href="../dev/deprecation.html"><strong aria-hidden="true">2.5.</strong> Deprecation Procedure</a></li></ol></li><li class="chapter-item expanded "><a href="../design.html"><strong aria-hidden="true">3.</strong> Design</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../design/chain-state.html"><strong aria-hidden="true">3.1.</strong> Chain State</a></li><li class="chapter-item expanded "><a href="../design/coins-view.html"><strong aria-hidden="true">3.2.</strong> "Coins" View</a></li><li class="chapter-item expanded "><a href="../design/p2p-data-propagation.html"><strong aria-hidden="true">3.3.</strong> P2P Data Propagation</a></li></ol></li></ol>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
         </nav>
 
         <!-- Track and set sidebar scroll position -->
@@ -116,9 +123,9 @@
                                 <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
-                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
                             <i class="fa fa-bars"></i>
-                        </button>
+                        </label>
                         <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
                             <i class="fa fa-paint-brush"></i>
                         </button>
@@ -177,7 +184,7 @@ continues to be available and function as normal. While features at this
 stage remain enabled by default, they may be explicitly disabled by
 specifying <code>-allowdeprecated=none</code> on the command line when starting the
 node, or by including <code>allowdeprecated=none</code> as a line in the <code>zcash.conf</code>
-file. </li>
+file.</li>
 <li>In the next stage of deprecation, the feature will be disabled by default.
 Disabled features may be reenabled via use of the <code>-allowdeprecated</code> flag.</li>
 <li>In the third stage, the feature is fully removed and is no longer available.</li>
@@ -189,7 +196,7 @@ features will only be fully removed after a total of at least 6 minor-version up
 version every 6 weeks, so deprecated features remain accessible by default for
 approximately 18 weeks, and then can be expected to be removed no less than 36
 weeks after their initial deprecation. Deprecation and removal timelines might
-be extended beyond this on a case-by-case basis to satisfy user requirements. </p>
+be extended beyond this on a case-by-case basis to satisfy user requirements.</p>
 <h1 id="currently-deprecated"><a class="header" href="#currently-deprecated">Currently Deprecated</a></h1>
 <h2 id="stage-1"><a class="header" href="#stage-1">Stage 1</a></h2>
 <p>The following features are deprecated, but remain enabled by default. These features
@@ -207,7 +214,7 @@ the node, or if an <code>allowdeprecated=none</code> line is added to <code>zcas
 to the CLI arguments when starting the node, or by adding an <code>allowdeprecated=&lt;feature&gt;</code>
 line to <code>zcash.conf</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th><code>feature</code></th><th>Deprecated</th><th>Feature details</th></tr></thead><tbody>
-<tr><td><code>legacy_privacy</code></td><td>5.0.0</td><td>The default &quot;legacy&quot; privacy policy for <code>z_sendmany</code> has been replaced by the <code>FullPrivacy</code> directive.</td></tr>
+<tr><td><code>legacy_privacy</code></td><td>5.0.0</td><td>The default "legacy" privacy policy for <code>z_sendmany</code> has been replaced by the <code>FullPrivacy</code> directive.</td></tr>
 <tr><td><code>getnewaddress</code></td><td>5.0.0</td><td>The <code>getnewaddress</code> RPC method.</td></tr>
 <tr><td><code>getrawchangeaddress</code></td><td>5.0.0</td><td>The <code>getrawchangeaddress</code> RPC method.</td></tr>
 <tr><td><code>z_getnewaddress</code></td><td>5.0.0</td><td>The <code>z_getnewaddress</code> RPC method.</td></tr>
@@ -224,7 +231,7 @@ line to <code>zcash.conf</code>.</p>
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next" href="../dev.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../dev.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -238,7 +245,7 @@ line to <code>zcash.conf</code>.</p>
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next" href="../dev.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../dev.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
